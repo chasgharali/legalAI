@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Firm {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  name    String
+  slug    String   @unique
+  users   User[]
+  matters Matter[]
+}
+
+model User {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("fee_earner")
+  firmId       String   @db.ObjectId
+  firm         Firm     @relation(fields: [firmId], references: [id])
+  matters      Matter[]
+  createdAt    DateTime @default(now())
+}
+
+model Matter {
+  id           String            @id @default(auto()) @map("_id") @db.ObjectId
+  reference    String
+  clientName   String
+  clientDob    DateTime?
+  incidentDate DateTime?
+  claimType    String
+  status       String            @default("draft")
+  firmId       String            @db.ObjectId
+  firm         Firm              @relation(fields: [firmId], references: [id])
+  assignedToId String?           @db.ObjectId
+  assignedTo   User?             @relation(fields: [assignedToId], references: [id])
+  documents    MedicalDocument[]
+  chronology   ChronologyEntry[]
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model MedicalDocument {
+  id                String            @id @default(auto()) @map("_id") @db.ObjectId
+  matterId          String            @db.ObjectId
+  matter            Matter            @relation(fields: [matterId], references: [id])
+  fileName          String
+  fileUrl           String
+  tag               String
+  pageCount         Int               @default(0)
+  extractedText     String
+  processingStatus  String            @default("pending")
+  chronologyEntries ChronologyEntry[]
+  uploadedAt        DateTime          @default(now())
+}
+
+model ChronologyEntry {
+  id                  String          @id @default(auto()) @map("_id") @db.ObjectId
+  matterId            String          @db.ObjectId
+  matter              Matter          @relation(fields: [matterId], references: [id])
+  documentId          String          @db.ObjectId
+  document            MedicalDocument @relation(fields: [documentId], references: [id])
+  date                String
+  dateApproximate     Boolean         @default(false)
+  eventType           String
+  providerName        String          @default("")
+  providerRole        String          @default("")
+  specialty           String          @default("")
+  presentingComplaint String          @default("")
+  diagnosis           String          @default("")
+  treatmentGiven      String          @default("")
+  followUpPlan        String          @default("")
+  relevanceFlag       String          @default("unrelated")
+  sourceDocumentTag   String          @default("")
+  sourcePageNumber    Int?
+  verbatimExtract     String          @default("")
+  notes               String          @default("")
+  verified            Boolean         @default(false)
+  editedByUser        Boolean         @default(false)
+  createdAt           DateTime        @default(now())
+}
+
+model CaseSummary {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  matterId    String   @unique @db.ObjectId
+  content     String
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  matterId  String?  @db.ObjectId
+  action    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}

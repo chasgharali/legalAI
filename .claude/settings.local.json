@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack)",
+      "Bash(npx create-next-app@latest medchron --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(mkdir -p /Users/asgharali/Desktop/LegalAI/src/app/api/matters/\\\\[matterId\\\\] && echo done)",
+      "Bash(npx tsc *)",
+      "Bash(node /Users/asgharali/Desktop/LegalAI/node_modules/typescript/lib/tsc.js --noEmit)",
+      "Bash(DATABASE_URL=\"postgresql://placeholder:placeholder@localhost:5432/medchron\" npx prisma generate)",
+      "Bash(grep -v \"^$\")",
+      "Bash(npm run *)",
+      "Bash(npm uninstall *)",
+      "Bash(openssl rand *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/login)",
+      "Bash(cat /tmp/medchron-dev.log)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/register -H 'Content-Type: application/json' -d '{\"name\":\"Test User\",\"email\":\"test@legalai.local\",\"password\":\"Test1234!\",\"firmName\":\"Legal AI Demo\"}')",
+      "Bash(curl -s http://localhost:3001/api/auth/csrf)",
+      "Bash(curl -s -c /tmp/cookies.txt -b /tmp/cookies.txt -X POST http://localhost:3001/api/auth/callback/credentials -H 'Content-Type: application/x-www-form-urlencoded' -d 'email=test%40legalai.local&password=Test1234%21&csrfToken=__CMDSUB_OUTPUT__')",
+      "Bash(node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const p=JSON.parse\\(d\\); console.log\\(p.version, p.main, p.exports\\)\")",
+      "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\); print\\('version:', p.get\\('version'\\)\\); print\\('main:', p.get\\('main'\\)\\); print\\('exports keys:', list\\(\\(p.get\\('exports'\\) or {}\\).keys\\(\\)\\)[:5]\\)\")",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}
