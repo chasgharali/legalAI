@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MedChron AI — Investor Pitch Deck</title>
+<style>
+  :root {
+    --blue: #2563eb;
+    --blue-dark: #1d4ed8;
+    --blue-deep: #0f1e3d;
+    --blue-deep-2: #16284c;
+    --blue-soft: #93c5fd;
+    --blue-pale: #dbeafe;
+    --bg: #f8fafc;
+    --paper: #ffffff;
+    --ink: #0f172a;
+    --ink-2: #334155;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --line-2: #cbd5e1;
+    --amber: #f59e0b;
+    --amber-pale: #fef3c7;
+    --amber-text: #92400e;
+    --green: #16a34a;
+    --green-pale: #dcfce7;
+    --red: #dc2626;
+    --red-pale: #fee2e2;
+    --slate-bg: #eef2f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    background: #06122e;
+    color: var(--ink);
+    overflow: hidden;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  .deck { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    padding: 6vh 8vw;
+    background: var(--bg);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(12px);
+    transition: opacity 320ms ease, transform 320ms ease;
+    overflow: auto;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  .slide.dark { background: var(--blue-deep); color: #e2e8f0; }
+  .slide.dark .h-eyebrow { color: var(--blue-soft); }
+  .slide.dark .muted { color: #94a3b8; }
+  .slide.dark .card { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
+  .slide.dark .num { color: var(--blue-soft); }
+  .slide.dark a { color: var(--blue-soft); }
+  .slide.dark hr { border-color: rgba(255,255,255,0.12); }
+
+  /* HEADER */
+  .h-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--blue);
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: clamp(36px, 5.6vw, 76px);
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+  h2 {
+    font-size: clamp(26px, 4.2vw, 54px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin-bottom: 18px;
+  }
+  h3 {
+    font-size: clamp(17px, 1.5vw, 21px);
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .lead {
+    font-size: clamp(17px, 1.45vw, 21px);
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 62ch;
+  }
+  .muted { color: var(--muted); }
+
+  /* COVER */
+  .cover {
+    justify-content: center;
+    background: radial-gradient(ellipse at top right, #1e3a8a 0%, #0f1e3d 55%, #060c1a 100%);
+    color: #e2e8f0;
+  }
+  .cover .mark {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    font-size: 12px; color: var(--blue-soft); margin-bottom: 36px;
+  }
+  .cover .mark::before {
+    content: ""; width: 28px; height: 1px; background: var(--blue);
+  }
+  .cover h1 { font-size: clamp(46px, 7.6vw, 104px); margin-bottom: 22px; color: #f1f5f9; }
+  .cover h1 em { font-style: normal; color: var(--blue-soft); }
+  .cover .tagline { font-size: clamp(19px, 2vw, 28px); color: #c1d0e8; max-width: 32ch; line-height: 1.35; font-weight: 300; }
+  .cover .meta { margin-top: auto; padding-top: 60px; display: flex; justify-content: space-between; align-items: end; color: #8aa0c2; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .cover .meta strong { color: var(--blue-soft); font-weight: 600; }
+
+  /* GRID */
+  .grid { display: grid; gap: 24px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    padding: 26px;
+    border-radius: 6px;
+    display: flex; flex-direction: column;
+  }
+  .card .num {
+    font-family: "SF Mono", "JetBrains Mono", Menlo, monospace;
+    font-size: 12px; color: var(--blue);
+    letter-spacing: 0.1em; margin-bottom: 12px;
+  }
+  .card p { color: var(--ink-2); line-height: 1.55; font-size: 14px; }
+
+  /* STAT BLOCKS */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 60px; margin-top: 30px; }
+  .stat .big { font-size: clamp(36px, 4.6vw, 68px); font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--ink); }
+  .slide.dark .stat .big { color: #f1f5f9; }
+  .stat .label { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.45; max-width: 28ch; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; }
+  tr:last-child td { border-bottom: none; }
+  tr.highlight td { background: var(--blue-pale); font-weight: 600; }
+  .slide.dark th, .slide.dark td { border-color: rgba(255,255,255,0.1); }
+
+  /* PROGRESS / NAV */
+  .progress {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 2px; background: rgba(0,0,0,0.06); z-index: 100;
+  }
+  .progress .bar { height: 100%; background: var(--blue); transition: width 320ms ease; }
+
+  .nav {
+    position: fixed; bottom: 18px; right: 24px;
+    z-index: 100;
+    display: flex; align-items: center; gap: 12px;
+    font-family: "SF Mono", monospace; font-size: 12px;
+    color: var(--muted);
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(8px);
+    padding: 8px 14px; border-radius: 999px;
+    border: 1px solid var(--line);
+  }
+  .nav button {
+    background: none; border: none; cursor: pointer;
+    font: inherit; color: var(--ink); padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .nav button:hover { background: var(--slate-bg); }
+
+  .nav-hint {
+    position: fixed; bottom: 18px; left: 24px;
+    color: var(--muted); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; opacity: 0.7;
+    z-index: 100;
+  }
+
+  /* QUOTE */
+  blockquote {
+    font-size: clamp(22px, 2.4vw, 34px);
+    line-height: 1.4;
+    font-weight: 500;
+    color: var(--ink);
+    border-left: 3px solid var(--blue);
+    padding-left: 28px;
+    margin: 24px 0;
+    max-width: 56ch;
+  }
+
+  /* BULLETS */
+  ul.tight { list-style: none; padding: 0; }
+  ul.tight li {
+    padding: 11px 0;
+    border-bottom: 1px solid var(--line);
+    display: flex; gap: 18px;
+    font-size: 15px; line-height: 1.5;
+  }
+  ul.tight li:last-child { border-bottom: none; }
+  ul.tight li::before {
+    content: ""; flex: 0 0 6px; width: 6px; height: 6px;
+    background: var(--blue); border-radius: 50%; margin-top: 9px;
+  }
+  .slide.dark ul.tight li { border-color: rgba(255,255,255,0.1); }
+
+  /* WORKFLOW DIAGRAM */
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; align-items: stretch; margin-top: 26px; }
+  .flow .step { background: var(--paper); border: 1px solid var(--line); padding: 22px 20px; position: relative; display: flex; flex-direction: column; gap: 8px; }
+  .flow .step:not(:last-child)::after {
+    content: "→"; position: absolute; right: -14px; top: 50%; transform: translateY(-50%);
+    background: var(--bg); padding: 0 6px; color: var(--blue); font-size: 22px; z-index: 2;
+    font-weight: 600;
+  }
+  .flow .step .n { font-family: "SF Mono", monospace; font-size: 11px; color: var(--blue); letter-spacing: 0.1em; }
+  .flow .step strong { font-size: 16px; line-height: 1.25; }
+  .flow .step p { font-size: 13px; color: var(--muted); line-height: 1.45; }
+
+  /* COMPETITION 2x2 — grid layout, explicit chart height */
+  .matrix-wrap {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    grid-template-rows: auto 32px;
+    column-gap: 18px;
+    row-gap: 12px;
+    width: 100%;
+    max-width: 1000px;
+    margin: 24px auto 0;
+  }
+  .matrix-y-axis {
+    grid-column: 1; grid-row: 1;
+    display: flex; flex-direction: column;
+    justify-content: space-between; align-items: flex-end;
+    font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    text-align: right;
+    padding: 14px 0;
+    line-height: 1.3;
+  }
+  .matrix {
+    grid-column: 2; grid-row: 1;
+    position: relative;
+    height: 440px;
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .matrix-x-axis {
+    grid-column: 2; grid-row: 2;
+    display: flex; justify-content: space-between;
+    align-items: center;
+    font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 0 8px;
+  }
+  .matrix .crosshair-x { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--line); }
+  .matrix .crosshair-y { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line); }
+  .matrix .dot {
+    position: absolute; padding: 7px 12px; background: white;
+    border: 1px solid var(--line-2); border-radius: 4px; font-size: 12px; font-weight: 600;
+    transform: translate(-50%, -50%); white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(15, 30, 61, 0.08);
+    color: var(--ink-2);
+  }
+  .matrix .dot.us { background: var(--blue); color: white; border-color: var(--blue); box-shadow: 0 8px 24px rgba(37, 99, 235, 0.32); z-index: 3; }
+  .matrix .dot .pulse { display: inline-block; width: 8px; height: 8px; background: var(--blue-soft); border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+  /* CHART */
+  .chart-wrap { margin-top: 26px; padding: 26px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+  .chart-wrap svg { width: 100%; height: auto; max-height: 340px; }
+
+  /* ASK */
+  .ask-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: center; margin-top: 24px; }
+  .ask-amount {
+    font-size: clamp(54px, 7vw, 110px); font-weight: 800; letter-spacing: -0.04em;
+    color: #f1f5f9; line-height: 1;
+  }
+  .ask-amount em { color: var(--blue-soft); font-style: normal; }
+  .ask-detail { font-size: 15px; line-height: 1.6; color: #c1d0e8; }
+  .use-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .use-list .use-row { display: grid; grid-template-columns: 60px 1fr auto; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); align-items: baseline; font-size: 14px; }
+  .use-list .use-row .pct { font-family: "SF Mono", monospace; color: var(--blue-soft); font-size: 13px; }
+  .use-list .use-row .amt { font-weight: 600; color: #f1f5f9; }
+  .use-list .use-row:last-child { border-bottom: none; }
+
+  /* BADGE */
+  .badge { display: inline-block; font-size: 11px; padding: 4px 10px; border: 1px solid var(--blue); color: var(--blue); border-radius: 999px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+
+  /* FINAL */
+  .final { justify-content: center; text-align: center; }
+  .final h1 { font-size: clamp(48px, 7vw, 96px); }
+  .final .contact { margin-top: 36px; font-size: 16px; color: #c1d0e8; }
+  .final .contact a { color: var(--blue-soft); text-decoration: none; }
+
+  /* ============================================
+     PRODUCT MOCKUP — recreated from real UI
+     ============================================ */
+  .ui-frame {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    background: var(--paper);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px -20px rgba(15, 30, 61, 0.3);
+    margin-top: 22px;
+    height: min(64vh, 600px);
+  }
+  .ui-sidebar {
+    background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
+    color: #e2e8f0;
+    padding: 18px 14px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .ui-brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 8px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    margin-bottom: 16px;
+  }
+  .ui-brand-mark {
+    width: 32px; height: 32px; border-radius: 6px; background: white;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--blue); font-weight: 800; font-size: 18px;
+  }
+  .ui-brand-name { font-weight: 700; font-size: 14px; }
+  .ui-brand-sub { font-size: 11px; color: rgba(255,255,255,0.7); }
+  .ui-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 6px;
+    color: rgba(255,255,255,0.85); font-size: 13px;
+  }
+  .ui-nav-item.active { background: rgba(255,255,255,0.15); color: white; font-weight: 600; }
+  .ui-nav-item svg { flex: 0 0 14px; opacity: 0.8; }
+
+  .ui-main { display: flex; flex-direction: column; min-width: 0; }
+  .ui-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 22px; border-bottom: 1px solid var(--line);
+    background: white;
+  }
+  .ui-pill {
+    background: var(--amber-pale); color: var(--amber-text);
+    font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 4px;
+  }
+  .ui-user {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--ink-2);
+  }
+  .ui-avatar {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--slate-bg);
+    display: flex; align-items: center; justify-content: center; color: var(--muted);
+    font-size: 12px; font-weight: 700;
+  }
+
+  .ui-content { padding: 18px 22px; overflow: auto; flex: 1; background: var(--bg); }
+  .ui-case-header {
+    background: white; border: 1px solid var(--line); border-radius: 6px;
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .ui-case-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .ui-case-title h4 { font-size: 18px; font-weight: 700; }
+  .ui-ref {
+    background: var(--slate-bg); color: var(--muted);
+    font-family: "SF Mono", monospace; font-size: 11px; padding: 3px 8px; border-radius: 3px;
+  }
+  .ui-ready { background: var(--green-pale); color: var(--green); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+  .ui-meta-row { display: flex; gap: 24px; margin-top: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+
+  .ui-tabs {
+    background: white; border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px; display: flex; gap: 2px; margin-bottom: 14px;
+  }
+  .ui-tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 4px;
+    font-size: 13px; color: var(--muted); cursor: pointer;
+  }
+  .ui-tab.active { background: var(--blue); color: white; font-weight: 600; }
+
+  .ui-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .ui-stat { background: white; border: 1px solid var(--line); border-radius: 6px; padding: 14px; text-align: center; }
+  .ui-stat-num { font-size: 26px; font-weight: 800; line-height: 1; }
+  .ui-stat-num.red { color: var(--red); }
+  .ui-stat-num.amber { color: var(--amber); }
+  .ui-stat-num.green { color: var(--green); }
+  .ui-stat-label { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  .ui-banner {
+    background: var(--amber-pale); border: 1px solid #fcd34d;
+    border-radius: 6px; padding: 10px 14px; margin-bottom: 14px;
+    font-size: 12px; color: var(--amber-text);
+  }
+  .ui-banner strong { font-weight: 700; }
+
+  .ui-timeline { display: flex; flex-direction: column; gap: 8px; }
+  .ui-entry {
+    display: grid; grid-template-columns: 100px 16px 1fr;
+    gap: 12px; align-items: start;
+    background: white; border: 1px solid var(--line); border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .ui-entry-date { font-family: "SF Mono", monospace; font-size: 12px; color: var(--muted); padding-top: 1px; }
+  .ui-entry-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line-2); margin-top: 3px; background: white; }
+  .ui-entry.verified .ui-entry-dot { background: var(--green); border-color: var(--green); }
+  .ui-entry-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; align-items: center; }
+  .ui-tag {
+    font-size: 10px; padding: 3px 8px; border-radius: 3px; font-weight: 600;
+  }
+  .ui-tag.gp { background: var(--blue-pale); color: var(--blue-dark); }
+  .ui-tag.pre { background: #f1f5f9; color: #475569; }
+  .ui-tag.crit { background: var(--red-pale); color: var(--red); }
+  .ui-tag.verified { color: var(--green); font-size: 11px; font-weight: 600; }
+  .ui-tag.edited { color: var(--muted); font-size: 11px; font-style: italic; }
+  .ui-entry-prov { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .ui-entry-spec { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .ui-entry-comp { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+
+  /* PRINT */
+  @media print {
+    body, .deck { overflow: visible; height: auto; background: white; }
+    .slide { position: relative; opacity: 1 !important; transform: none !important; pointer-events: auto !important; page-break-after: always; height: 100vh; overflow: hidden; }
+    .nav, .progress, .nav-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- 1. COVER -->
+  <section class="slide cover active" data-slide>
+    <div class="mark">MedChron AI</div>
+    <h1>Medical chronologies<br/>in <em>minutes</em>, not days.</h1>
+    <p class="tagline">The AI workbench for UK clinical-negligence and personal-injury solicitors. Source-anchored, barrister-ready, GDPR-compliant.</p>
+    <div class="meta">
+      <div><strong>Pre-seed</strong> · 2026 · Confidential</div>
+      <div>£350k raise · 18-month runway</div>
+    </div>
+  </section>
+
+  <!-- 2. PROBLEM -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">The Problem</div>
+    <h2>A 5,000-page case file.<br/>50 paralegal hours.<br/>One missed date and the case dies.</h2>
+    <p class="lead">Every UK clinical-negligence and PI claim begins the same way: a fee-earner ploughs through hospital records, GP notes, A&amp;E sheets and consultant letters to assemble a date-ordered medical chronology and a barrister-ready bundle. It is repetitive, expensive, error-prone, and the single biggest time sink in the practice area.</p>
+    <div class="stat-row">
+      <div class="stat"><div class="big">£2.4bn</div><div class="label">Paid by NHS Resolution in clinical-negligence claims, FY2022/23</div></div>
+      <div class="stat"><div class="big">30–50 hrs</div><div class="label">Paralegal time on chronology &amp; bundle for a single complex case</div></div>
+      <div class="stat"><div class="big">~70%</div><div class="label">Of medical records are scanned PDFs that off-the-shelf AI can&rsquo;t read</div></div>
+    </div>
+  </section>
+
+  <!-- 3. SOLUTION -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">The Solution</div>
+    <h2>Upload the file. Get a verifiable chronology, a court-ready bundle, and a chat that cites every line.</h2>
+    <div class="grid g3" style="margin-top: 30px;">
+      <div class="card">
+        <div class="num">01 / CHRONOLOGY</div>
+        <h3>Auto-extracted, source-anchored</h3>
+        <p>Every clinical event: date, provider, presenting complaint, diagnosis, treatment, relevance flag. Every entry cites a verbatim quote and a real page number. Treatment gaps and inconsistencies surfaced automatically.</p>
+      </div>
+      <div class="card">
+        <div class="num">02 / BUNDLE</div>
+        <h3>Barrister-ready PDF in one click</h3>
+        <p>Cover sheet, table of contents, full chronology, document index, watermark, page numbers, A4. Generated to the format counsel actually expects, not a print-to-PDF browser dialog.</p>
+      </div>
+      <div class="card">
+        <div class="num">03 / CHAT</div>
+        <h3>Ask anything about the case</h3>
+        <p>Vector-retrieved entries, GPT-4o reasoning, every answer cited back to a specific entry and source page. &ldquo;Was there a pre-existing back condition?&rdquo; &mdash; answered with evidence in seconds.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. WHY NOW -->
+  <section class="slide dark" data-slide>
+    <div class="h-eyebrow">Why Now</div>
+    <h2>Three forces converging in 2026.</h2>
+    <div class="grid g3" style="margin-top: 36px;">
+      <div class="card">
+        <div class="num">CAPABILITY</div>
+        <h3 style="color: #f1f5f9;">Frontier models finally read medical PDFs</h3>
+        <p style="color: #94a3b8;">GPT-4o + Azure Document Intelligence handle the messy reality of NHS records: scanned, abbreviated, mixed handwriting and SNOMED codes. The 2024 generation could not. The 2026 generation can.</p>
+      </div>
+      <div class="card">
+        <div class="num">PRESSURE</div>
+        <h3 style="color: #f1f5f9;">Margins compressing under fixed-cost reform</h3>
+        <p style="color: #94a3b8;">Civil Justice Council and MoJ proposals on fixed recoverable costs squeeze claimant firm margins. Firms must reduce paralegal hours per case or lose money on smaller-value matters.</p>
+      </div>
+      <div class="card">
+        <div class="num">COMPLIANCE</div>
+        <h3 style="color: #f1f5f9;">SRA and ICO now demand AI accountability</h3>
+        <p style="color: #94a3b8;">Generic ChatGPT use is a regulatory risk. Firms need legal-specific AI with audit trail, source citations, fee-earner verification workflow and UK data residency. Off-the-shelf tools don&rsquo;t qualify.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. HOW IT WORKS -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">How It Works</div>
+    <h2>Built around the workflow, not bolted onto it.</h2>
+    <div class="flow">
+      <div class="step">
+        <div class="n">01 — INGEST</div>
+        <strong>OCR + page tracking</strong>
+        <p>Drag &amp; drop GP notes, hospital records, consultant letters. AWS Textract OCR for scanned pages; per-page text preserved with real page numbers.</p>
+      </div>
+      <div class="step">
+        <div class="n">02 — EXTRACT</div>
+        <strong>Structured chronology</strong>
+        <p>GPT-4o produces typed JSON: 14 event types, 4 relevance flags, treatment-gap detection, inconsistency flags. Background queue, retries on failure.</p>
+      </div>
+      <div class="step">
+        <div class="n">03 — VERIFY</div>
+        <strong>Fee-earner workflow</strong>
+        <p>Every entry has a Verified checkbox. Bundles watermarked &ldquo;AI-Generated &mdash; Review Required&rdquo; until signed off. SRA-defensible.</p>
+      </div>
+      <div class="step">
+        <div class="n">04 — DELIVER</div>
+        <strong>Bundle + chat</strong>
+        <p>One-click PDF for counsel. Vector-retrieved chat with [entry-id] citations. Audit trail of every query and download.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:32px;flex-wrap:wrap;">
+      <span class="badge">Source-anchored AI</span>
+      <span class="badge">Real page citations</span>
+      <span class="badge">UK data residency</span>
+      <span class="badge">Audit log on every action</span>
+      <span class="badge">No training on your data</span>
+    </div>
+  </section>
+
+  <!-- 6. PRODUCT (UI MOCKUP) -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">The Product, Working Today</div>
+    <h2 style="font-size: clamp(24px, 3.4vw, 42px); margin-bottom: 6px;">Every entry source-anchored. Every claim auditable.</h2>
+    <p class="muted" style="font-size: 14px;">Live dashboard from a real matter — chronology view, fee-earner verification workflow, AI-generated &amp; review-required watermarks throughout.</p>
+
+    <div class="ui-frame">
+      <!-- SIDEBAR -->
+      <div class="ui-sidebar">
+        <div class="ui-brand">
+          <div class="ui-brand-mark">⚖</div>
+          <div>
+            <div class="ui-brand-name">MedChron AI</div>
+            <div class="ui-brand-sub">Legal Platform</div>
+          </div>
+        </div>
+        <div class="ui-nav-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </div>
+        <div class="ui-nav-item active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          All Matters
+        </div>
+        <div class="ui-nav-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings
+        </div>
+      </div>
+
+      <!-- MAIN -->
+      <div class="ui-main">
+        <div class="ui-topbar">
+          <div class="ui-pill">AI-Generated — Review Required</div>
+          <div class="ui-user">
+            <div class="ui-avatar">TU</div>
+            <div>
+              <div style="font-weight: 600;">Test User</div>
+              <div style="color: var(--muted); font-size: 11px;">Legal AI Demo</div>
+            </div>
+          </div>
+        </div>
+        <div class="ui-content">
+          <!-- CASE HEADER -->
+          <div class="ui-case-header">
+            <div class="ui-case-title">
+              <span style="color: var(--muted);">←</span>
+              <h4>WEBB, Marcus James</h4>
+              <span class="ui-ref">MC/2026/2902</span>
+              <span class="ui-ready">Ready</span>
+            </div>
+            <div class="ui-meta-row">
+              <span>Personal Injury</span>
+              <span>Incident: 09 May 2026</span>
+              <span>DOB: 09 Jul 1985</span>
+              <span>4 documents · 57 entries</span>
+            </div>
+          </div>
+
+          <!-- TABS -->
+          <div class="ui-tabs">
+            <div class="ui-tab">▦ Overview</div>
+            <div class="ui-tab">📄 Documents</div>
+            <div class="ui-tab active">🕒 Chronology</div>
+            <div class="ui-tab">📖 Summary</div>
+            <div class="ui-tab">📦 Bundle</div>
+            <div class="ui-tab">💬 Chat</div>
+          </div>
+
+          <!-- STATS -->
+          <div class="ui-stats">
+            <div class="ui-stat"><div class="ui-stat-num">57</div><div class="ui-stat-label">Total Entries</div></div>
+            <div class="ui-stat"><div class="ui-stat-num red">3</div><div class="ui-stat-label">Causation Critical</div></div>
+            <div class="ui-stat"><div class="ui-stat-num amber">1</div><div class="ui-stat-label">Treatment Gaps</div></div>
+            <div class="ui-stat"><div class="ui-stat-num green">1</div><div class="ui-stat-label">Verified</div></div>
+          </div>
+
+          <!-- BANNER -->
+          <div class="ui-banner"><strong>AI-Generated — Review Required.</strong> Click the checkbox on each entry to mark it as verified by a fee earner.</div>
+
+          <!-- TIMELINE -->
+          <div class="ui-timeline">
+            <div class="ui-entry">
+              <div class="ui-entry-date">2019-02-14</div>
+              <div class="ui-entry-dot"></div>
+              <div>
+                <div class="ui-entry-tags">
+                  <span class="ui-tag gp">GP Visit</span>
+                  <span class="ui-tag pre">Pre-existing</span>
+                </div>
+                <div class="ui-entry-prov">Dr F. Al-Khatib <span class="ui-entry-spec">· General Practice</span></div>
+                <div class="ui-entry-comp">Annual asthma review</div>
+              </div>
+            </div>
+            <div class="ui-entry verified">
+              <div class="ui-entry-date">2020-04-17</div>
+              <div class="ui-entry-dot"></div>
+              <div>
+                <div class="ui-entry-tags">
+                  <span class="ui-tag gp">GP Visit</span>
+                  <span class="ui-tag pre">Pre-existing</span>
+                  <span class="ui-tag verified">✓ Verified</span>
+                  <span class="ui-tag edited">Edited</span>
+                </div>
+                <div class="ui-entry-prov">Dr F. Al-Khatib <span class="ui-entry-spec">· General Practice</span></div>
+                <div class="ui-entry-comp">Anxiety, COVID lockdown</div>
+              </div>
+            </div>
+            <div class="ui-entry">
+              <div class="ui-entry-date">2026-05-12</div>
+              <div class="ui-entry-dot"></div>
+              <div>
+                <div class="ui-entry-tags">
+                  <span class="ui-tag gp">A&amp;E Attendance</span>
+                  <span class="ui-tag crit">Causation Critical</span>
+                </div>
+                <div class="ui-entry-prov">Royal London Hospital <span class="ui-entry-spec">· Emergency Medicine</span></div>
+                <div class="ui-entry-comp">Acute lower back pain following RTA, neurological deficit suspected</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. MARKET -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">Market</div>
+    <h2>A focused wedge, with adjacent markets 10× the size.</h2>
+    <div class="grid g3" style="margin-top: 30px;">
+      <div class="card">
+        <div class="num">SOM &mdash; STARTING POINT</div>
+        <h3 style="font-size:30px;">£3.2M ARR</h3>
+        <p>~150 specialist clinical-negligence firms in the UK (Chambers / Legal 500 / AvMA accredited). Average price £1,800 / month at the Growth tier.</p>
+      </div>
+      <div class="card">
+        <div class="num">SAM &mdash; BROADER PI</div>
+        <h3 style="font-size:30px;">£40–60M ARR</h3>
+        <p>~3,000 personal-injury firms across the UK who handle medical negligence as part of their caseload. Same tooling, same workflow.</p>
+      </div>
+      <div class="card">
+        <div class="num">TAM &mdash; ALL LITIGATION</div>
+        <h3 style="font-size:30px;">£500M+</h3>
+        <p>Family law, immigration, employment, criminal defence &mdash; every adversarial practice area runs the same chronology + bundle workflow. Globally larger.</p>
+      </div>
+    </div>
+    <p class="muted" style="margin-top: 30px; font-size: 12px;">Sources: NHS Resolution Annual Report 2022/23, SRA Open Data, Chambers UK 2026, Legal 500 UK 2026, AvMA Specialist Panel.</p>
+  </section>
+
+  <!-- 8. BUSINESS MODEL -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">Business Model</div>
+    <h2>Three tiers. £8 COGS per case. 87% gross margin.</h2>
+    <div style="margin-top: 24px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Tier</th><th>Price</th><th>Cap</th><th>Target firm</th><th>COGS / case</th><th>Margin</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Pay-per-case</strong></td>
+            <td>£75 / matter</td>
+            <td>—</td>
+            <td>Pilots, sole practitioners</td>
+            <td>£8</td>
+            <td>89%</td>
+          </tr>
+          <tr class="highlight">
+            <td><strong>Starter</strong></td>
+            <td>£500 / month</td>
+            <td>10 cases / mo</td>
+            <td>Boutique 5–15 fee-earner firms</td>
+            <td>£10</td>
+            <td>80%</td>
+          </tr>
+          <tr>
+            <td><strong>Growth</strong></td>
+            <td>£1,800 / month</td>
+            <td>50 cases / mo</td>
+            <td>Mid-size claimant firms</td>
+            <td>£10</td>
+            <td>72%</td>
+          </tr>
+          <tr>
+            <td><strong>Enterprise</strong></td>
+            <td>Custom</td>
+            <td>Unlimited + SSO + DPA</td>
+            <td>Top-30 claimant / NHS panel firms</td>
+            <td>£12</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lead" style="margin-top: 20px;">Net retention ~115% target: customers expand from Starter → Growth as they trust the verification workflow and onboard more fee-earners.</p>
+  </section>
+
+  <!-- 9. COMPETITION -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">Competitive Landscape</div>
+    <h2>Generic legal AI doesn&rsquo;t solve clinical negligence. We do.</h2>
+    <div class="matrix-wrap">
+      <div class="matrix-y-axis">
+        <span>Workflow-specific ↑</span>
+        <span>↓ Generic</span>
+      </div>
+      <div class="matrix">
+        <div class="crosshair-x"></div>
+        <div class="crosshair-y"></div>
+        <div class="dot us" style="left: 78%; top: 18%;"><span class="pulse"></span>MedChron AI</div>
+        <div class="dot" style="left: 28%; top: 24%;">Harvey</div>
+        <div class="dot" style="left: 42%; top: 42%;">Robin AI</div>
+        <div class="dot" style="left: 70%; top: 50%;">Lawhive</div>
+        <div class="dot" style="left: 22%; top: 60%;">Spellbook</div>
+        <div class="dot" style="left: 80%; top: 76%;">Bundledocs / Casedo</div>
+        <div class="dot" style="left: 14%; top: 86%;">ChatGPT / Claude</div>
+      </div>
+      <div class="matrix-x-axis">
+        <span>← Generic AI</span>
+        <span>UK legal-tuned →</span>
+      </div>
+    </div>
+    <ul class="tight" style="margin-top: 50px;">
+      <li><strong style="min-width:200px;">Generic AI</strong><span>Can summarise a paragraph. Can&rsquo;t handle 5,000-page scanned bundles, can&rsquo;t cite source pages, can&rsquo;t produce a court-ready PDF.</span></li>
+      <li><strong style="min-width:200px;">Bundle-only tools</strong><span>Manual indexing. No AI extraction, no chat, no causation analysis. Customers still pay 30+ paralegal hours.</span></li>
+      <li><strong style="min-width:200px;">Horizontal legal AI</strong><span>Built for transactions and contracts, not litigation. Don&rsquo;t understand SNOMED, NHS abbreviations, or barrister-bundle conventions.</span></li>
+    </ul>
+  </section>
+
+  <!-- 10. DEFENSIBILITY -->
+  <section class="slide dark" data-slide>
+    <div class="h-eyebrow">Defensibility</div>
+    <h2>The moat is not the model. It&rsquo;s the workflow, the data, and the trust.</h2>
+    <div class="grid g2" style="margin-top: 30px;">
+      <div class="card">
+        <div class="num">01 / DATA EXHAUST</div>
+        <h3 style="color: #f1f5f9;">Every verified chronology improves the next one</h3>
+        <p style="color: #94a3b8;">Fee-earner edits are training signal. Domain-specific reranker + verification dataset compounds with every case &mdash; an OpenAI prompt cannot replicate this.</p>
+      </div>
+      <div class="card">
+        <div class="num">02 / WORKFLOW LOCK-IN</div>
+        <h3 style="color: #f1f5f9;">We&rsquo;re the system of record for chronologies</h3>
+        <p style="color: #94a3b8;">Once a firm has 6 months of cases, chronologies and verifications in MedChron, switching cost is high. Not a tool you swap mid-matter.</p>
+      </div>
+      <div class="card">
+        <div class="num">03 / COMPLIANCE</div>
+        <h3 style="color: #f1f5f9;">UK-only AI, signed DPA, ISO 27001 path</h3>
+        <p style="color: #94a3b8;">Azure OpenAI UK South + Document Intelligence + audit log per matter. Generic AI providers cannot match the Article 9 health-data DPA chain.</p>
+      </div>
+      <div class="card">
+        <div class="num">04 / DISTRIBUTION</div>
+        <h3 style="color: #f1f5f9;">AvMA, Chambers and Legal 500 referral network</h3>
+        <p style="color: #94a3b8;">First five customers become reference accounts. Specialist communities (AvMA, APIL) recommend tools they trust. We sit inside that recommendation engine.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. TRACTION & ROADMAP -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">Traction &amp; Roadmap</div>
+    <h2>Working product. Five design partners targeted. Public launch Q3.</h2>
+    <div class="grid g2" style="margin-top: 24px; align-items: start;">
+      <div>
+        <h3 style="margin-bottom: 14px;">What&rsquo;s built today</h3>
+        <ul class="tight">
+          <li><span><strong>End-to-end workflow.</strong> Upload → OCR → AI chronology → bundle PDF → chat with citations. Live and tested.</span></li>
+          <li><span><strong>UK compliance baseline.</strong> AWS eu-west-2 storage, audit log, per-firm row-level security, 8-hour session timeout.</span></li>
+          <li><span><strong>Background queue.</strong> Inngest-driven worker, parallelised chunk processing, retries on failure.</span></li>
+          <li><span><strong>Vector retrieval chat.</strong> Top-25 entry RAG, [entry-id] citations streamed to UI.</span></li>
+          <li><span><strong>Real PDF bundles.</strong> Puppeteer-rendered A4 with header/footer and page numbering.</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="margin-bottom: 14px;">Next 12 months</h3>
+        <ul class="tight">
+          <li><span><strong>Q1 — 5 design partners.</strong> Free pilots with AvMA-accredited firms. De-identified files, real workflow stress test.</span></li>
+          <li><span><strong>Q2 — Public launch.</strong> First paying customers on Starter tier. £75/case + £500/mo SKUs live.</span></li>
+          <li><span><strong>Q3 — Azure migration.</strong> AI layer on Azure OpenAI UK South + Document Intelligence with signed enterprise DPA.</span></li>
+          <li><span><strong>Q3 — Counsel co-product.</strong> Direct invite-to-bundle workflow for instructed barristers. Two-sided distribution.</span></li>
+          <li><span><strong>Q4 — Enterprise tier + SSO.</strong> First top-30 firm. Cyber Essentials Plus + ISO 27001 in flight.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. GTM -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">Go-to-Market</div>
+    <h2>Land at the AvMA panel. Expand through Chambers Band 1.</h2>
+    <div class="grid g2" style="margin-top: 28px;">
+      <div>
+        <h3>Sales motion</h3>
+        <p class="lead" style="margin-top:14px;">Founder-led until £500K ARR. Direct outreach to clinical-negligence partners at the ~80 AvMA-accredited firms; free 30-day pilot with two cases of the firm&rsquo;s choosing; convert to Starter or Growth on day 31.</p>
+      </div>
+      <div>
+        <h3>Channel partners</h3>
+        <ul class="tight" style="margin-top: 8px;">
+          <li><span>AvMA referral panel listings</span></li>
+          <li><span>APIL (Association of Personal Injury Lawyers) sponsorship</span></li>
+          <li><span>Chambers/Legal 500 directory partners</span></li>
+          <li><span>Two leading barristers&rsquo; chambers as &ldquo;recommends&rdquo;</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="stat-row" style="margin-top: 44px;">
+      <div class="stat"><div class="big">£250</div><div class="label">CAC target — direct sales founder-led, year one</div></div>
+      <div class="stat"><div class="big">£14k</div><div class="label">3-year LTV at Growth tier with 115% NRR</div></div>
+      <div class="stat"><div class="big">56×</div><div class="label">LTV / CAC at year-three steady state</div></div>
+    </div>
+  </section>
+
+  <!-- 13. FINANCIALS -->
+  <section class="slide" data-slide>
+    <div class="h-eyebrow">Financial Plan</div>
+    <h2>Path to £4M ARR in 36 months. Capital-efficient by design.</h2>
+    <div class="chart-wrap">
+      <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bar" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="#3b82f6"/>
+            <stop offset="1" stop-color="#1e3a8a"/>
+          </linearGradient>
+        </defs>
+        <!-- axes -->
+        <line x1="60" y1="270" x2="780" y2="270" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="60" y1="40" x2="60" y2="270" stroke="#e2e8f0" stroke-width="1"/>
+        <!-- y labels -->
+        <g font-family="SF Mono, monospace" font-size="11" fill="#64748b">
+          <text x="48" y="270" text-anchor="end">£0</text>
+          <text x="48" y="214" text-anchor="end">£1M</text>
+          <text x="48" y="158" text-anchor="end">£2M</text>
+          <text x="48" y="102" text-anchor="end">£3M</text>
+          <text x="48" y="46" text-anchor="end">£4M</text>
+        </g>
+        <!-- bars (ARR per quarter) -->
+        <g>
+          <rect x="100" y="266" width="50" height="4" fill="url(#bar)"/>
+          <rect x="170" y="258" width="50" height="12" fill="url(#bar)"/>
+          <rect x="240" y="245" width="50" height="25" fill="url(#bar)"/>
+          <rect x="310" y="225" width="50" height="45" fill="url(#bar)"/>
+          <rect x="380" y="195" width="50" height="75" fill="url(#bar)"/>
+          <rect x="450" y="160" width="50" height="110" fill="url(#bar)"/>
+          <rect x="520" y="120" width="50" height="150" fill="url(#bar)"/>
+          <rect x="590" y="85" width="50" height="185" fill="url(#bar)"/>
+          <rect x="660" y="50" width="50" height="220" fill="url(#bar)"/>
+        </g>
+        <!-- year labels -->
+        <g font-family="-apple-system, sans-serif" font-size="11" fill="#64748b">
+          <text x="225" y="295" text-anchor="middle">YEAR 1</text>
+          <text x="475" y="295" text-anchor="middle">YEAR 2</text>
+          <text x="685" y="295" text-anchor="middle">YEAR 3</text>
+        </g>
+        <!-- ARR callouts -->
+        <g font-family="-apple-system, sans-serif" font-size="12" font-weight="700" fill="#0f172a">
+          <text x="335" y="218">£180k</text>
+          <text x="615" y="78">£1.8M</text>
+          <text x="685" y="42">£4.2M</text>
+        </g>
+      </svg>
+    </div>
+    <div class="stat-row" style="margin-top: 24px;">
+      <div class="stat"><div class="big">12</div><div class="label">Paying firms by end of year 1</div></div>
+      <div class="stat"><div class="big">80</div><div class="label">Paying firms by end of year 2</div></div>
+      <div class="stat"><div class="big">200+</div><div class="label">Firms by year 3, plus first counsel revenue</div></div>
+    </div>
+  </section>
+
+  <!-- 14. THE ASK -->
+  <section class="slide dark" data-slide>
+    <div class="h-eyebrow">The Ask</div>
+    <h2>Pre-seed raise to convert a working product into ten paying customers.</h2>
+    <div class="ask-grid">
+      <div>
+        <div class="ask-amount">£<em>350k</em></div>
+        <p class="ask-detail" style="margin-top: 18px;">SAFE at a £3M post-money cap. 18-month runway. Capital-efficient: enough to ship the Azure compliance posture, sign first 12 customers, and reach the milestones a seed round needs.</p>
+      </div>
+      <div>
+        <div class="use-list">
+          <div class="use-row"><span class="pct">45%</span><span>Founding solicitor + ML engineer hires</span><span class="amt">£158k</span></div>
+          <div class="use-row"><span class="pct">25%</span><span>Founder &amp; AE compensation, year one</span><span class="amt">£87k</span></div>
+          <div class="use-row"><span class="pct">15%</span><span>Azure infra, OCR &amp; LLM at pilot scale</span><span class="amt">£52k</span></div>
+          <div class="use-row"><span class="pct">10%</span><span>ISO 27001, Cyber Essentials Plus, legal</span><span class="amt">£35k</span></div>
+          <div class="use-row"><span class="pct">5%</span><span>Marketing &amp; AvMA / APIL events</span><span class="amt">£18k</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="lead" style="margin-top: 30px; max-width: 70ch; color: #c1d0e8;">Milestones to seed: £40k MRR, 12 paying firms, ISO 27001 certified, NHS Resolution-panel firm in pilot, Azure UK South AI stack live. Targeted seed round £2M at £10–12M post in month 18.</p>
+  </section>
+
+  <!-- 15. THANK YOU -->
+  <section class="slide cover final" data-slide>
+    <div class="mark">MedChron AI</div>
+    <h1>Let&rsquo;s build the<br/>workbench<br/><em>UK litigation deserves.</em></h1>
+    <div class="contact">
+      <p style="font-size: 18px;">Confidential — for investor review only</p>
+    </div>
+    <div class="meta">
+      <div>2026</div>
+      <div><strong>MedChron AI</strong></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="progress"><div class="bar" id="progressBar"></div></div>
+<div class="nav-hint">← → arrow keys to navigate</div>
+<div class="nav">
+  <button id="prev" aria-label="Previous">←</button>
+  <span><span id="cur">1</span> / <span id="total">15</span></span>
+  <button id="next" aria-label="Next">→</button>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('[data-slide]'));
+  const total = slides.length;
+  document.getElementById('total').textContent = total;
+  let i = 0;
+
+  function go(n) {
+    i = Math.max(0, Math.min(total - 1, n));
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+    document.getElementById('cur').textContent = i + 1;
+    document.getElementById('progressBar').style.width = ((i + 1) / total) * 100 + '%';
+  }
+  go(0);
+
+  document.getElementById('prev').onclick = () => go(i - 1);
+  document.getElementById('next').onclick = () => go(i + 1);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(i + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(i - 1); }
+    if (e.key === 'Home') go(0);
+    if (e.key === 'End') go(total - 1);
+  });
+  document.getElementById('deck').addEventListener('click', (e) => {
+    if (e.target.closest('button, a, .nav, .ui-frame')) return;
+    const w = window.innerWidth;
+    if (e.clientX > w * 0.5) go(i + 1); else go(i - 1);
+  });
+</script>
+
+</body>
+</html>

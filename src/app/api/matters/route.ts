@@ -52,6 +52,32 @@ export async function POST(req: NextRequest) {
 
   const user = session.user as { id: string; firmId: string };
 
+  // Enforce firm plan & monthly matter limit. Admin can override via the
+  // /admin/firms detail page. Super_admin role bypasses the check entirely.
+  const firm = await prisma.firm.findUnique({ where: { id: user.firmId } });
+  if (!firm) {
+    return NextResponse.json({ error: 'Firm not found' }, { status: 404 });
+  }
+  if (firm.status !== 'active') {
+    return NextResponse.json(
+      { error: `Firm is ${firm.status}. Contact support to reactivate.` },
+      { status: 403 }
+    );
+  }
+  if (
+    (session.user as { role?: string }).role !== 'super_admin' &&
+    firm.monthlyMatterLimit !== null &&
+    firm.mattersUsedThisMonth >= firm.monthlyMatterLimit
+  ) {
+    return NextResponse.json(
+      {
+        error: `Monthly matter limit reached (${firm.monthlyMatterLimit}). Upgrade your plan or wait until next month's reset.`,
+        code: 'LIMIT_REACHED',
+      },
+      { status: 402 }
+    );
+  }
+
   const matter = await prisma.matter.create({
     data: {
       reference: body.reference || generateMatterReference(),
@@ -64,6 +90,12 @@ export async function POST(req: NextRequest) {
       assignedToId: user.id,
       status: 'draft',
     },
+  });
+
+  // Increment usage counter.
+  await prisma.firm.update({
+    where: { id: user.firmId },
+    data: { mattersUsedThisMonth: { increment: 1 } },
   });
 
   return NextResponse.json(matter, { status: 201 });

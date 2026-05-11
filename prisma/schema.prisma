@@ -11,8 +11,20 @@ model Firm {
   id      String   @id @default(auto()) @map("_id") @db.ObjectId
   name    String
   slug    String   @unique
+  // Billing plan: pay_per_case | starter | growth | enterprise | trial
+  plan    String   @default("trial")
+  // Monthly cap on matters that can be processed. null = unlimited (enterprise).
+  monthlyMatterLimit Int?     @default(2)
+  // Counter reset by a monthly Inngest cron. Used to enforce limits.
+  mattersUsedThisMonth Int    @default(0)
+  monthlyResetAt   DateTime?
+  // Free-text notes the super-admin keeps about this firm.
+  adminNotes       String?
+  billingContact   String?
+  status           String    @default("active") // active | suspended | cancelled
   users   User[]
   matters Matter[]
+  createdAt DateTime @default(now())
 }
 
 model User {
@@ -55,8 +67,18 @@ model MedicalDocument {
   tag               String
   pageCount         Int               @default(0)
   extractedText     String
+  // Per-page text array: [{ page: 1, text: "..." }, ...]
+  // Stored as Json so the chunker and chat retrieval can map back to real
+  // page numbers instead of the previously hardcoded 15-pages-per-chunk lie.
+  pageTexts         Json?
+  // "digital" = pdf-parse extracted text directly,
+  // "ocr"     = AWS Textract OCR was used (scanned PDF),
+  // "mixed"   = some pages digital, some OCR'd,
+  // "failed"  = no text could be extracted.
+  extractionMethod  String            @default("digital")
   processingStatus  String            @default("pending")
   chronologyEntries ChronologyEntry[]
+  jobs              ChronologyJob[]
   uploadedAt        DateTime          @default(now())
 }
 
@@ -79,11 +101,35 @@ model ChronologyEntry {
   relevanceFlag       String          @default("unrelated")
   sourceDocumentTag   String          @default("")
   sourcePageNumber    Int?
+  // Real start/end page derived from page-aware chunking.
+  sourcePageStart     Int?
+  sourcePageEnd       Int?
   verbatimExtract     String          @default("")
   notes               String          @default("")
   verified            Boolean         @default(false)
   editedByUser        Boolean         @default(false)
+  // OpenAI text-embedding-3-small (1536 dims) of "presentingComplaint +
+  // diagnosis + verbatimExtract", used for chat retrieval.
+  embedding           Float[]
   createdAt           DateTime        @default(now())
+}
+
+// Tracks asynchronous chronology generation jobs (run by Node worker).
+// Created when the API receives a generate request, updated by the worker.
+model ChronologyJob {
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  matterId        String          @db.ObjectId
+  documentId      String          @db.ObjectId
+  document        MedicalDocument @relation(fields: [documentId], references: [id])
+  // queued | running | completed | failed
+  status          String          @default("queued")
+  totalChunks     Int             @default(0)
+  completedChunks Int             @default(0)
+  entriesCreated  Int             @default(0)
+  errorMessage    String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
 }
 
 model CaseSummary {
@@ -102,4 +148,107 @@ model AuditLog {
   details   String?
   ipAddress String?
   createdAt DateTime @default(now())
+}
+
+// ============================================================================
+// Marketing / outreach: prospects we haven't yet converted to customer firms.
+// Populated from the UK clinical-negligence research CSV plus manual additions.
+// ============================================================================
+
+model MarketingProspect {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  firmName     String
+  city         String?
+  region       String?
+  address      String?
+  phone        String?
+  email        String?
+  website      String?
+  side         String?   // Claimant | Defendant | Both
+  specialism   String?
+  // Pipeline status: cold | contacted | replied | demo_scheduled | converted | declined | bounced
+  status       String   @default("cold")
+  // ICP score 0-100: AvMA panel + Chambers Band 1 firms score high.
+  icpScore     Int      @default(50)
+  tags         String[]
+  notes        String?
+  // When the first email was sent. Used to compute "days since contacted".
+  firstContactedAt DateTime?
+  lastContactedAt  DateTime?
+  lastRepliedAt    DateTime?
+  // If a prospect converts to a paying firm, this points at that Firm row.
+  convertedFirmId  String? @db.ObjectId
+  source       String?  // "csv-2026-05" | "manual" | "referral"
+  sends        EmailSend[]
+  sequenceState ProspectSequenceState[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([firmName])
+}
+
+model EmailTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  // Personalization tokens: {{firm_name}}, {{city}}, {{specialism}}, {{first_name}}, {{sender_name}}
+  subject   String
+  body      String   // Markdown / plain text. Rendered to HTML on send.
+  // Optional preview text shown in inbox preview pane.
+  preheader String?
+  // Tier of buyer this template targets (informational).
+  tier      String?  // "avma" | "chambers_band_1" | "regional" | "general"
+  sends     EmailSend[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailSequence {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  // List of steps in JSON: [{ stepIndex, templateId, delayDays }, ...]
+  steps     Json
+  isActive  Boolean  @default(true)
+  prospectStates ProspectSequenceState[]
+  createdAt DateTime @default(now())
+}
+
+// Tracks where a prospect is in a given sequence (which step they're on,
+// when the next step fires). Inngest cron reads this and dispatches sends.
+model ProspectSequenceState {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  prospectId  String   @db.ObjectId
+  prospect    MarketingProspect @relation(fields: [prospectId], references: [id])
+  sequenceId  String   @db.ObjectId
+  sequence    EmailSequence     @relation(fields: [sequenceId], references: [id])
+  currentStepIndex Int  @default(0)
+  nextSendAt   DateTime?
+  // active | paused | completed | stopped (e.g. prospect replied → stop)
+  status      String   @default("active")
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+
+  @@unique([prospectId, sequenceId])
+}
+
+model EmailSend {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  prospectId   String   @db.ObjectId
+  prospect     MarketingProspect @relation(fields: [prospectId], references: [id])
+  templateId   String?  @db.ObjectId
+  template     EmailTemplate?    @relation(fields: [templateId], references: [id])
+  // Resend message id, for webhook callbacks.
+  providerMsgId String?
+  fromEmail    String
+  toEmail      String
+  subject      String
+  bodyHtml     String
+  // queued | sent | delivered | opened | clicked | bounced | replied | failed
+  status       String   @default("queued")
+  errorMessage String?
+  sentAt       DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  repliedAt    DateTime?
+  bouncedAt    DateTime?
+  createdAt    DateTime @default(now())
 }

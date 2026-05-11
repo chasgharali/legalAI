@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FileText, Zap, Loader2, CheckCircle, AlertCircle, RefreshCw, Brain } from 'lucide-react';
 import { DOCUMENT_TAG_LABELS } from '@/types/document';
 import type { MedicalDocument } from '@/types/document';
@@ -16,6 +16,11 @@ export default function DocumentList({ matterId, initialDocuments }: Props) {
   const [documents, setDocuments] = useState(initialDocuments);
   const [processing, setProcessing] = useState<Record<string, boolean>>({});
   const [generatingAll, setGeneratingAll] = useState(false);
+
+  // Keep client state aligned with latest server data after router.refresh().
+  useEffect(() => {
+    setDocuments(initialDocuments);
+  }, [initialDocuments]);
 
   async function generateChronology(docId: string) {
     setProcessing((p) => ({ ...p, [docId]: true }));

@@ -45,7 +45,11 @@ export async function POST(req: NextRequest) {
         tag,
         pageCount: extracted.pageCount,
         extractedText: cleanExtractedText(extracted.text),
-        processingStatus: 'extracted',
+        // Per-page text drives accurate page citations downstream. Stored as
+        // Json so chunkPages() can map chunk indices to real page numbers.
+        pageTexts: extracted.pages,
+        extractionMethod: extracted.method,
+        processingStatus: extracted.method === 'failed' ? 'error' : 'extracted',
       },
     });
 

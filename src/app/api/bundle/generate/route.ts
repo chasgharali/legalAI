@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { claimTypeLabel, formatDate } from '@/lib/utils';
 import { EVENT_TYPE_LABELS, RELEVANCE_FLAG_LABELS } from '@/types/chronology';
+import { access } from 'node:fs/promises';
+import { constants as fsConstants } from 'node:fs';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -30,15 +32,141 @@ export async function POST(req: NextRequest) {
 
   const summary = await prisma.caseSummary.findUnique({ where: { matterId } });
 
-  // Build HTML bundle for PDF generation
+  // Build HTML bundle and (by default) render it to a real PDF.
   const html = buildBundleHTML(matter, summary?.content ?? null, user.name ?? 'Fee Earner');
 
-  return new Response(html, {
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Content-Disposition': `inline; filename="bundle-${matter.reference}.html"`,
-    },
-  });
+  // ?format=html lets us debug layout in the browser without spinning up
+  // Chromium. Default delivery is PDF — what barristers actually want.
+  const format = new URL(req.url).searchParams.get('format');
+  if (format === 'html') {
+    return new Response(html, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': `inline; filename="bundle-${matter.reference}.html"`,
+      },
+    });
+  }
+
+  try {
+    const pdf = await renderHtmlToPdf(html);
+    return new Response(pdf, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="bundle-${matter.reference}.pdf"`,
+        'Cache-Control': 'no-store',
+      },
+    });
+  } catch (err) {
+    console.error('[bundle/generate] PDF render failed, falling back to HTML:', err);
+    return new Response(html, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': `inline; filename="bundle-${matter.reference}.html"`,
+        'X-Bundle-Fallback': 'pdf-render-failed',
+      },
+    });
+  }
+}
+
+async function renderHtmlToPdf(html: string): Promise<Buffer> {
+  // Lazy-import so adding @sparticuz/chromium doesn't penalise other routes
+  // with a heavy cold start.
+  const isServerless = !!process.env.AWS_REGION || !!process.env.VERCEL;
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const puppeteer = (await import('puppeteer-core')).default;
+
+  let launchOpts: Parameters<typeof puppeteer.launch>[0];
+
+  if (isServerless) {
+    const chromium = (await import('@sparticuz/chromium')).default;
+    launchOpts = {
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    };
+  } else {
+    // Local dev: resolve a valid browser executable and avoid launching
+    // invalid `.app` roots or non-executable paths.
+    const executablePath = await resolveLocalChromeExecutablePath();
+    launchOpts = {
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath,
+    };
+  }
+
+  const browser = await puppeteer.launch(launchOpts);
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const buffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
+      displayHeaderFooter: true,
+      headerTemplate:
+        '<div style="font-size:8pt;color:#777;width:100%;padding:0 15mm;text-align:right;">CONFIDENTIAL — LEGALLY PRIVILEGED</div>',
+      footerTemplate:
+        '<div style="font-size:8pt;color:#777;width:100%;padding:0 15mm;display:flex;justify-content:space-between;"><span>MedChron AI — AI-Assisted Legal Tool</span><span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>',
+    });
+    return Buffer.from(buffer);
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+function expandExecutableCandidate(raw: string): string[] {
+  const candidate = raw.trim();
+  if (!candidate) return [];
+
+  // If a macOS .app bundle path is provided, map it to the real binary path.
+  if (candidate.endsWith('.app')) {
+    const appName = candidate.split('/').pop()?.replace(/\.app$/, '') ?? '';
+    return [candidate, `${candidate}/Contents/MacOS/${appName}`];
+  }
+  return [candidate];
+}
+
+async function isExecutable(path: string): Promise<boolean> {
+  try {
+    await access(path, fsConstants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveLocalChromeExecutablePath(): Promise<string> {
+  const envCandidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    process.env.CHROME_PATH,
+  ].filter((value): value is string => Boolean(value));
+
+  const defaultCandidates = [
+    '/Applications/Google Chrome.app',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Google Chrome for Testing.app',
+    '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+    '/Applications/Microsoft Edge.app',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    '/Applications/Brave Browser.app',
+    '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+    '/opt/homebrew/bin/chromium',
+    '/usr/local/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+  ];
+
+  const expanded = [...envCandidates, ...defaultCandidates].flatMap(expandExecutableCandidate);
+  for (const candidate of expanded) {
+    if (await isExecutable(candidate)) return candidate;
+  }
+
+  throw new Error(
+    'No executable browser found for PDF rendering. Set PUPPETEER_EXECUTABLE_PATH to your Chrome/Edge binary.'
+  );
 }
 
 function buildBundleHTML(

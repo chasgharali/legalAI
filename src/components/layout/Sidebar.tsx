@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Settings,
   Scale,
+  ShieldCheck,
 } from 'lucide-react';
 
 const navItems = [
@@ -16,7 +17,7 @@ const navItems = [
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -52,6 +53,15 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        {isAdmin ? (
+          <Link
+            href="/admin"
+            className="mt-4 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-amber-300 hover:text-amber-200 hover:bg-slate-800 border-t border-slate-800 pt-4"
+          >
+            <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+            Super Admin
+          </Link>
+        ) : null}
       </nav>
 
       {/* Footer */}
