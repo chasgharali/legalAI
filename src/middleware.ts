@@ -25,7 +25,10 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    // Inngest webhook must be public (signed by Inngest).
-    '/((?!api/auth|api/inngest|login|register|_next/static|_next/image|favicon.ico).*)',
+    // Public routes:
+    //   /api/auth, /api/inngest          — signed by external providers
+    //   /api/track/*                     — open + click pixels, no auth
+    //   /api/admin/gmail/callback        — Google OAuth redirect
+    '/((?!api/auth|api/inngest|api/track|api/admin/gmail/callback|login|register|_next/static|_next/image|favicon.ico).*)',
   ],
 };

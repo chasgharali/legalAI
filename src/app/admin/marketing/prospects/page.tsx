@@ -1,7 +1,9 @@
 import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
+import { bootEmailWorker } from '@/lib/email-worker';
 
 export const dynamic = 'force-dynamic';
+bootEmailWorker();
 
 const STATUS_OPTIONS = [
   'all',

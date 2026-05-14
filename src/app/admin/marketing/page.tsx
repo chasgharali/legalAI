@@ -1,7 +1,11 @@
 import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
+import { bootEmailWorker } from '@/lib/email-worker';
 
 export const dynamic = 'force-dynamic';
+// Start the email worker the first time someone hits any marketing page.
+// Subsequent imports are no-ops (state lives on globalThis).
+bootEmailWorker();
 
 const PIPELINE_STAGES: Array<{ key: string; label: string; tint: string }> = [
   { key: 'cold', label: 'Cold', tint: 'bg-slate-100 text-slate-700' },

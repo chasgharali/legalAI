@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db/prisma';
 import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
+import TemplateEditorClient from '@/components/admin/TemplateEditorClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,18 +52,23 @@ export default async function TemplatesPage({
 
   if (editId && !editing) notFound();
 
+  const senderName = process.env.OUTREACH_SENDER_NAME ?? 'Asghar';
+
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-8 max-w-7xl">
       <div className="text-[11px] uppercase tracking-widest text-blue-600 font-semibold mb-2">
         Marketing · Templates
       </div>
       <h1 className="text-3xl font-bold mb-6">Email templates</h1>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-6 mb-4">
         {/* LIST */}
-        <div className="col-span-4 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="col-span-3 bg-white border border-slate-200 rounded-lg overflow-hidden">
           <div className="p-4 border-b border-slate-100">
-            <a href="/admin/marketing/templates" className="text-sm text-blue-600 hover:underline">
+            <a
+              href="/admin/marketing/templates"
+              className="text-sm text-blue-600 hover:underline"
+            >
               + New template
             </a>
           </div>
@@ -94,95 +100,22 @@ export default async function TemplatesPage({
           </ul>
         </div>
 
-        {/* EDITOR */}
-        <div className="col-span-8">
-          <form action={saveTemplate} className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
-            {editing ? <input type="hidden" name="id" value={editing.id} /> : null}
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">
-                Name (internal)
-              </label>
-              <input
-                name="name"
-                required
-                defaultValue={editing?.name ?? ''}
-                placeholder="e.g. avma-cold-1-intro"
-                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">
-                Subject (uses {`{{firm_name}}`} etc.)
-              </label>
-              <input
-                name="subject"
-                required
-                defaultValue={editing?.subject ?? ''}
-                placeholder="Quick question about {{firm_name}}'s chronology workflow"
-                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">
-                Body
-              </label>
-              <textarea
-                name="body"
-                required
-                defaultValue={editing?.body ?? DEFAULT_BODY}
-                rows={18}
-                className="w-full border border-slate-200 rounded px-3 py-2 text-sm font-mono"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Tokens: <code>{`{{firm_name}}`}</code>, <code>{`{{city}}`}</code>,{' '}
-                <code>{`{{specialism}}`}</code>, <code>{`{{first_name}}`}</code>,{' '}
-                <code>{`{{sender_name}}`}</code>, <code>{`{{calendar_link}}`}</code>,{' '}
-                <code>{`{{pitch_url}}`}</code>. Markdown supported: <code>**bold**</code>,{' '}
-                <code>[label](url)</code>.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">
-                  Preheader (inbox preview)
-                </label>
-                <input
-                  name="preheader"
-                  defaultValue={editing?.preheader ?? ''}
-                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">
-                  Tier
-                </label>
-                <select
-                  name="tier"
-                  defaultValue={editing?.tier ?? ''}
-                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-                >
-                  <option value="">— Any —</option>
-                  <option value="avma">AvMA panel</option>
-                  <option value="chambers_band_1">Chambers Band 1</option>
-                  <option value="regional">Regional</option>
-                  <option value="general">General</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 pt-2">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded">
-                {editing ? 'Save changes' : 'Create template'}
-              </button>
-              {editing ? (
-                <button
-                  formAction={deleteTemplate}
-                  className="text-sm text-red-600 hover:underline"
-                >
-                  Delete template
-                </button>
-              ) : null}
-            </div>
-          </form>
+        {/* EDITOR with live spam score */}
+        <div className="col-span-9">
+          <TemplateEditorClient
+            key={editing?.id ?? 'new'}
+            initial={{
+              id: editing?.id,
+              name: editing?.name ?? '',
+              subject: editing?.subject ?? '',
+              body: editing?.body ?? DEFAULT_BODY,
+              preheader: editing?.preheader ?? '',
+              tier: editing?.tier ?? '',
+            }}
+            saveAction={saveTemplate}
+            deleteAction={deleteTemplate}
+            senderName={senderName}
+          />
         </div>
       </div>
     </div>
@@ -191,7 +124,7 @@ export default async function TemplatesPage({
 
 const DEFAULT_BODY = `Hi {{first_name}},
 
-I'm {{sender_name}} — I've been building MedChron AI, a tool that turns a 5,000-page medical bundle into a barrister-ready chronology in minutes, with every entry source-anchored and reviewable by a fee earner.
+I'm {{sender_name}} — I've been building **MedChron AI**, a tool that turns a 5,000-page medical bundle into a barrister-ready chronology in minutes, with every entry source-anchored and reviewable by a fee earner.
 
 I'm reaching out because {{firm_name}} is one of the leading {{specialism}} firms in {{city}}, and I think there's a real fit. Two of your team could verify three chronologies in the time it currently takes a paralegal to draft one.
 

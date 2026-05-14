@@ -36,6 +36,7 @@ model User {
   firmId       String   @db.ObjectId
   firm         Firm     @relation(fields: [firmId], references: [id])
   matters      Matter[]
+  gmail        GmailAccount?
   createdAt    DateTime @default(now())
 }
 
@@ -236,19 +237,90 @@ model EmailSend {
   prospect     MarketingProspect @relation(fields: [prospectId], references: [id])
   templateId   String?  @db.ObjectId
   template     EmailTemplate?    @relation(fields: [templateId], references: [id])
-  // Resend message id, for webhook callbacks.
+  // "gmail" (sent via connected Gmail account) | "resend" (transactional)
+  // | "dev" (console only, no API key configured).
+  provider     String   @default("dev")
+  // Whichever provider's id we got back. For Gmail this is the message id
+  // returned by users.messages.send; for Resend it's the email id.
   providerMsgId String?
+  // RFC 5322 Message-ID header value. Used to match inbound replies by
+  // their In-Reply-To / References headers.
+  headerMessageId String?
+  // Gmail thread id, used to cluster the conversation and detect replies
+  // arriving in the same thread.
+  threadId     String?
   fromEmail    String
   toEmail      String
   subject      String
+  bodyText     String?  // Plain-text version (good for deliverability)
   bodyHtml     String
   // queued | sent | delivered | opened | clicked | bounced | replied | failed
   status       String   @default("queued")
   errorMessage String?
   sentAt       DateTime?
   openedAt     DateTime?
+  lastOpenedAt DateTime?
+  openCount    Int      @default(0)
   clickedAt    DateTime?
+  lastClickedAt DateTime?
+  clickCount   Int      @default(0)
   repliedAt    DateTime?
   bouncedAt    DateTime?
+  // Spam-likelihood score (0=clean, 100=very spammy) computed before send.
+  // See src/lib/spam-score.ts.
+  spamScore    Int      @default(0)
+  spamReasons  String[] // Human-readable flags, e.g. ["ALL CAPS subject"]
+  replies      ConversationMessage[]
   createdAt    DateTime @default(now())
+}
+
+// ============================================================================
+// Gmail OAuth: one Google account connected per admin user.
+// Tokens are stored alongside the user row; the worker uses them to send
+// outbound mail and to poll the inbox for replies.
+// ============================================================================
+
+model GmailAccount {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String  @unique @db.ObjectId
+  user          User    @relation(fields: [userId], references: [id])
+  emailAddress  String  @unique
+  // OAuth tokens. Treat refreshToken as a credential. In production these
+  // should be encrypted at rest — see docs note.
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime
+  scopes        String[]
+  // Gmail history id for incremental sync. Updated after each poll.
+  lastHistoryId String?
+  lastPolledAt  DateTime?
+  status        String  @default("connected") // connected | revoked | error
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// An inbound message threaded with one of our outbound sends. Created by
+// the reply-polling worker when a Gmail thread contains a message we did
+// not send ourselves.
+model ConversationMessage {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  emailSendId   String   @db.ObjectId
+  emailSend     EmailSend @relation(fields: [emailSendId], references: [id])
+  prospectId    String   @db.ObjectId
+  // Gmail message id for dedupe.
+  providerMsgId String   @unique
+  threadId      String?
+  fromEmail     String
+  fromName      String?
+  toEmail       String
+  subject       String
+  snippet       String?
+  bodyText      String?
+  // "inbound" (prospect → us) | "outbound" (we are tracking the original send too)
+  direction     String   @default("inbound")
+  // Gmail labels, e.g. ["INBOX", "IMPORTANT"]. Lets us filter spam/promotions.
+  labels        String[]
+  receivedAt    DateTime
+  createdAt     DateTime @default(now())
 }

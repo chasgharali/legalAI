@@ -39,6 +39,8 @@ interface WorkerState {
   booted: boolean;
   draining: boolean;
   runningJobs: Set<string>;
+  pauseUntilMs: number;
+  lastQueueErrorAtMs: number;
   timer?: NodeJS.Timeout;
 }
 
@@ -53,6 +55,8 @@ function getWorkerState(): WorkerState {
       booted: false,
       draining: false,
       runningJobs: new Set<string>(),
+      pauseUntilMs: 0,
+      lastQueueErrorAtMs: 0,
     };
   }
   return globalThis.__chronologyWorkerState;
@@ -389,17 +393,24 @@ async function processChronologyJob(jobId: string): Promise<void> {
     ]);
   } catch (error) {
     console.error('[chronology-worker] job failed', error);
-    await markJobFailed(
-      job.id,
-      job.documentId,
-      error instanceof Error ? error.message : 'Chronology generation failed'
-    );
+    try {
+      await markJobFailed(
+        job.id,
+        job.documentId,
+        error instanceof Error ? error.message : 'Chronology generation failed'
+      );
+    } catch (markErr) {
+      // If DB is unavailable we cannot persist failure state right now.
+      // Swallow here so the worker never crashes with unhandled rejections.
+      console.error('[chronology-worker] failed to persist failed state', markErr);
+    }
   }
 }
 
 async function drainChronologyQueue(): Promise<void> {
   const state = getWorkerState();
   if (state.draining) return;
+  if (Date.now() < state.pauseUntilMs) return;
   state.draining = true;
 
   try {
@@ -414,11 +425,24 @@ async function drainChronologyQueue(): Promise<void> {
       if (state.runningJobs.has(queued.id)) break;
 
       state.runningJobs.add(queued.id);
-      void processChronologyJob(queued.id).finally(() => {
-        state.runningJobs.delete(queued.id);
-        void drainChronologyQueue();
-      });
+      void processChronologyJob(queued.id)
+        .catch((error) => {
+          console.error('[chronology-worker] unexpected job rejection', error);
+        })
+        .finally(() => {
+          state.runningJobs.delete(queued.id);
+          void drainChronologyQueue();
+        });
     }
+  } catch (error) {
+    // Mongo/Prisma can temporarily fail (DNS/network blips). Back off and retry
+    // instead of emitting unhandled rejections in a hot loop.
+    const now = Date.now();
+    if (now - state.lastQueueErrorAtMs > 30000) {
+      console.error('[chronology-worker] queue scan failed; backing off briefly', error);
+      state.lastQueueErrorAtMs = now;
+    }
+    state.pauseUntilMs = now + 15000;
   } finally {
     state.draining = false;
   }

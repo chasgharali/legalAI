@@ -39,6 +39,8 @@ export default async function AdminLayout({
           <AdminLink href="/admin/marketing/prospects" label="Prospects" icon="≡" />
           <AdminLink href="/admin/marketing/templates" label="Templates" icon="✉" />
           <AdminLink href="/admin/marketing/sequences" label="Sequences" icon="↻" />
+          <AdminLink href="/admin/marketing/sent" label="Sent emails" icon="➤" />
+          <AdminLink href="/admin/marketing/inbox" label="Inbox / Replies" icon="✉︎" />
         </nav>
         <div className="p-4 text-[11px] text-blue-200 border-t border-white/10 space-y-2">
           <div>

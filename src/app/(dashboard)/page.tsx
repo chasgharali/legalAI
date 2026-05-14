@@ -13,24 +13,33 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const firmId = (session?.user as { firmId: string }).firmId;
 
-  const [matters, stats, docCount, chronCount] = await Promise.all([
-    prisma.matter.findMany({
-      where: { firmId },
-      include: {
-        assignedTo: { select: { name: true } },
-        _count: { select: { documents: true, chronology: true } },
-      },
-      orderBy: { updatedAt: 'desc' },
-      take: 8,
-    }),
-    prisma.matter.groupBy({
-      by: ['status'],
-      where: { firmId },
-      _count: true,
-    }),
-    prisma.medicalDocument.count({ where: { matter: { firmId } } }),
-    prisma.chronologyEntry.count({ where: { matter: { firmId } } }),
-  ]);
+  let matters: Awaited<ReturnType<typeof prisma.matter.findMany>> = [];
+  let stats: Awaited<ReturnType<typeof prisma.matter.groupBy>> = [];
+  let docCount = 0;
+  let chronCount = 0;
+
+  try {
+    [matters, stats, docCount, chronCount] = await Promise.all([
+      prisma.matter.findMany({
+        where: { firmId },
+        include: {
+          assignedTo: { select: { name: true } },
+          _count: { select: { documents: true, chronology: true } },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 8,
+      }),
+      prisma.matter.groupBy({
+        by: ['status'],
+        where: { firmId },
+        _count: true,
+      }),
+      prisma.medicalDocument.count({ where: { matter: { firmId } } }),
+      prisma.chronologyEntry.count({ where: { matter: { firmId } } }),
+    ]);
+  } catch (error) {
+    console.error('Dashboard data load failed', error);
+  }
 
   const statusCount = Object.fromEntries(
     stats.map((s: { status: string; _count: number }) => [s.status, s._count])

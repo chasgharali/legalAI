@@ -5,10 +5,13 @@ import Link from 'next/link';
 import {
   defaultPersonalizationContext,
   personalize,
-  sendEmail,
+  sendOutreachEmail,
 } from '@/lib/email';
+import { requireSuperAdmin } from '@/lib/admin';
+import { bootEmailWorker } from '@/lib/email-worker';
 
 export const dynamic = 'force-dynamic';
+bootEmailWorker();
 
 async function updateStatus(formData: FormData) {
   'use server';
@@ -26,6 +29,7 @@ async function updateStatus(formData: FormData) {
 
 async function sendOneOffEmail(formData: FormData) {
   'use server';
+  const me = await requireSuperAdmin();
   const prospectId = String(formData.get('prospectId') ?? '');
   const templateId = String(formData.get('templateId') ?? '');
   if (!prospectId || !templateId) return;
@@ -50,26 +54,16 @@ async function sendOneOffEmail(formData: FormData) {
   const subject = personalize(template.subject, ctx);
   const body = personalize(template.body, ctx);
 
-  const result = await sendEmail({
+  // sendOutreachEmail persists the EmailSend row, injects tracking, and
+  // routes through the admin's connected Gmail account when available.
+  await sendOutreachEmail({
     to: prospect.email,
     subject,
     bodyText: body,
+    prospectId,
+    templateId,
+    gmailAccountUserId: me.id,
     tags: { prospectId, templateId },
-  });
-
-  await prisma.emailSend.create({
-    data: {
-      prospectId,
-      templateId,
-      fromEmail: ctx.sender_email,
-      toEmail: prospect.email,
-      subject,
-      bodyHtml: body,
-      status: result.status,
-      providerMsgId: result.providerMsgId ?? undefined,
-      errorMessage: result.error,
-      sentAt: result.status === 'sent' ? new Date() : null,
-    },
   });
 
   await prisma.marketingProspect.update({
@@ -114,16 +108,23 @@ export default async function ProspectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [prospect, templates, sequences] = await Promise.all([
+  const [prospect, templates, sequences, replies] = await Promise.all([
     prisma.marketingProspect.findUnique({
       where: { id },
       include: {
-        sends: { orderBy: { createdAt: 'desc' }, include: { template: true } },
+        sends: {
+          orderBy: { createdAt: 'desc' },
+          include: { template: true, replies: { orderBy: { receivedAt: 'asc' } } },
+        },
         sequenceState: { include: { sequence: true } },
       },
     }),
     prisma.emailTemplate.findMany({ orderBy: { name: 'asc' } }),
     prisma.emailSequence.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } }),
+    prisma.conversationMessage.findMany({
+      where: { prospectId: id, direction: 'inbound' },
+      orderBy: { receivedAt: 'desc' },
+    }),
   ]);
   if (!prospect) notFound();
 
@@ -272,7 +273,35 @@ export default async function ProspectDetailPage({
             </form>
           ) : null}
 
-          {/* Email history */}
+          {/* Replies */}
+          {replies.length > 0 ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-5">
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                <span className="text-green-700">💬</span>
+                Replies from this prospect ({replies.length})
+              </h2>
+              <ul className="text-sm space-y-3">
+                {replies.map((r) => (
+                  <li key={r.id} className="bg-white border border-green-100 rounded p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">
+                        {r.fromName ?? r.fromEmail}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {new Date(r.receivedAt).toLocaleString('en-GB')}
+                      </span>
+                    </div>
+                    <div className="text-xs font-medium text-slate-700 mt-1">{r.subject}</div>
+                    <div className="text-sm text-slate-700 mt-2 whitespace-pre-line line-clamp-6">
+                      {r.bodyText || r.snippet}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {/* Email history with tracking metrics */}
           <div className="bg-white border border-slate-200 rounded-lg p-5">
             <h2 className="font-semibold mb-3">Email history ({prospect.sends.length})</h2>
             {prospect.sends.length === 0 ? (
@@ -281,20 +310,55 @@ export default async function ProspectDetailPage({
               <ul className="text-sm divide-y divide-slate-100">
                 {prospect.sends.map((s) => (
                   <li key={s.id} className="py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{s.subject}</span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-medium truncate flex-1">{s.subject}</span>
                       <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
                         {s.status}
                       </span>
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
                       {s.template?.name ?? 'No template'} ·{' '}
+                      <span className="uppercase text-[10px] font-semibold">{s.provider}</span> ·{' '}
                       {s.sentAt
                         ? new Date(s.sentAt).toLocaleString('en-GB')
                         : 'Not sent yet'}
                     </div>
+                    <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-600">
+                      <span title="Spam likelihood (0=clean, 100=likely filter)">
+                        🛡 Spam: <strong className="tabular-nums">{s.spamScore}</strong>
+                      </span>
+                      <span>
+                        👁 Opens: <strong className="tabular-nums">{s.openCount}</strong>
+                        {s.lastOpenedAt ? (
+                          <span className="text-slate-400">
+                            {' '}
+                            (last {new Date(s.lastOpenedAt).toLocaleString('en-GB')})
+                          </span>
+                        ) : null}
+                      </span>
+                      <span>
+                        🔗 Clicks: <strong className="tabular-nums">{s.clickCount}</strong>
+                      </span>
+                      {s.replies.length > 0 ? (
+                        <span className="text-green-700">
+                          ✉ {s.replies.length} repl{s.replies.length === 1 ? 'y' : 'ies'}
+                        </span>
+                      ) : null}
+                    </div>
                     {s.errorMessage ? (
                       <div className="text-xs text-red-600 mt-1">Error: {s.errorMessage}</div>
+                    ) : null}
+                    {s.spamReasons.length > 0 && s.spamScore > 30 ? (
+                      <details className="mt-2">
+                        <summary className="text-xs text-slate-500 cursor-pointer">
+                          Spam reasons ({s.spamReasons.length})
+                        </summary>
+                        <ul className="mt-1 text-[11px] text-slate-500 pl-3">
+                          {s.spamReasons.map((r, i) => (
+                            <li key={i}>• {r}</li>
+                          ))}
+                        </ul>
+                      </details>
                     ) : null}
                   </li>
                 ))}
