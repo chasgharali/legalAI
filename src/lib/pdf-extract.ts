@@ -105,15 +105,33 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<PDFExtractResu
   }
 
   if (!hasTextractCredentials()) {
-    console.warn(
-      `[pdf-extract] ${scannedPageNumbers.length}/${pageCount} pages appear to be ` +
-        'scanned but AWS Textract is not configured. Returning digital text only.'
+    if (!hasOpenAIKey()) {
+      console.warn(
+        `[pdf-extract] ${scannedPageNumbers.length}/${pageCount} pages appear to be ` +
+          'scanned but neither AWS Textract nor OpenAI is configured. Returning digital text only.'
+      );
+      return {
+        text: digitalPages.map((p) => p.text).join('\n\f\n'),
+        pageCount,
+        pages: digitalPages,
+        method: digitalPages.every((p) => isScanned(p.text)) ? 'failed' : 'mixed',
+      };
+    }
+
+    console.info(
+      `[pdf-extract] Routing ${scannedPageNumbers.length}/${pageCount} scanned pages to OpenAI Vision OCR.`
     );
+    const ocrPages = await ocrPagesWithOpenAIVision(buffer, scannedPageNumbers);
+    const ocrByPage = new Map(ocrPages.map((p) => [p.page, p.text]));
+    const merged: PageText[] = digitalPages.map((p) =>
+      ocrByPage.has(p.page) ? { page: p.page, text: ocrByPage.get(p.page)! } : p
+    );
+    const allOcr = scannedPageNumbers.length === pageCount;
     return {
-      text: digitalPages.map((p) => p.text).join('\n\f\n'),
+      text: merged.map((p) => p.text).join('\n\f\n'),
       pageCount,
-      pages: digitalPages,
-      method: digitalPages.every((p) => isScanned(p.text)) ? 'failed' : 'mixed',
+      pages: merged,
+      method: allOcr ? 'ocr' : 'mixed',
     };
   }
 
@@ -151,6 +169,54 @@ function hasTextractCredentials(): boolean {
   const id = process.env.AWS_ACCESS_KEY_ID ?? '';
   const secret = process.env.AWS_SECRET_ACCESS_KEY ?? '';
   return id.length > 10 && id !== '...' && secret.length > 10 && secret !== '...';
+}
+
+function hasOpenAIKey(): boolean {
+  const key = process.env.OPENAI_API_KEY ?? '';
+  return key.length > 10 && key !== '...';
+}
+
+async function ocrPagesWithOpenAIVision(
+  buffer: Buffer,
+  pageNumbers: number[]
+): Promise<PageText[]> {
+  const { getOpenAI } = await import('./openai');
+  const client = getOpenAI();
+
+  const pageImages = await renderPdfPagesToPng(buffer, pageNumbers);
+  const out: PageText[] = [];
+
+  for (const { page, png } of pageImages) {
+    try {
+      const base64 = Buffer.from(png).toString('base64');
+      const response = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: { url: `data:image/png;base64,${base64}`, detail: 'high' },
+              },
+              {
+                type: 'text',
+                text: 'Extract all text from this medical document scan. Return only the extracted text, preserving line breaks and structure. Do not add any commentary.',
+              },
+            ],
+          },
+        ],
+        max_tokens: 2000,
+      });
+      const text = response.choices[0]?.message?.content ?? '';
+      out.push({ page, text: cleanExtractedText(text) });
+    } catch (err) {
+      console.error(`[pdf-extract] OpenAI Vision OCR failed for page ${page}:`, err);
+      out.push({ page, text: '' });
+    }
+  }
+
+  return out;
 }
 
 /**

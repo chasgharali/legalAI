@@ -48,6 +48,34 @@ export async function uploadFile(
   return uploadLocal(key, body);
 }
 
+export async function downloadFile(storedUrl: string): Promise<Buffer> {
+  if (storedUrl.startsWith('/uploads/')) {
+    const filePath = path.join(process.cwd(), 'public', storedUrl);
+    return fs.readFile(filePath);
+  }
+
+  if (storedUrl.startsWith('s3://') && hasRealS3Credentials()) {
+    const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+    const BUCKET = process.env.AWS_S3_BUCKET ?? 'medchron-documents';
+    const key = storedUrl.replace(`s3://${BUCKET}/`, '');
+    const s3 = new S3Client({
+      region: process.env.AWS_REGION ?? 'eu-west-2',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
+    });
+    const resp = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of resp.Body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  }
+
+  throw new Error(`Cannot download file from URL: ${storedUrl}`);
+}
+
 export async function getFileUrl(storedUrl: string): Promise<string> {
   if (storedUrl.startsWith('/uploads/')) return storedUrl;
 
