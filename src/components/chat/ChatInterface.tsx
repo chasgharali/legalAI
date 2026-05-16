@@ -1,13 +1,24 @@
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
-import { Send, Loader2, MessageSquare, AlertTriangle, Bot, User } from 'lucide-react';
+import { Send, Loader2, MessageSquare, AlertTriangle, Bot, User, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import MarkdownContent from '@/components/ui/MarkdownContent';
+
+interface Citation {
+  id: string;
+  date: string;
+  sourceDocumentTag: string;
+  sourcePageNumber: number | null;
+  documentId: string;
+  documentName: string;
+  documentUrl: string;
+}
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  citations?: Citation[];
 }
 
 interface Props {
@@ -55,30 +66,48 @@ export default function ChatInterface({ matterId, entryCount }: Props) {
       const reader = res.body?.getReader();
       if (!reader) throw new Error('No response body');
 
-      setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: '', citations: [] }]);
 
       const decoder = new TextDecoder();
       let accumulated = '';
+      let activeCitations: Citation[] = [];
+      let sseBuffer = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter((l) => l.startsWith('data: '));
+        sseBuffer = sseBuffer + decoder.decode(value, { stream: true });
+        const eventBlocks = sseBuffer.split('\n\n');
+        sseBuffer = eventBlocks.pop() ?? '';
 
-        for (const line of lines) {
-          const data = line.replace('data: ', '');
-          if (data === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(data) as { text: string };
-            accumulated = accumulated + parsed.text;
-            const snapshot = accumulated;
-            setMessages((prev) => [
-              ...prev.slice(0, -1),
-              { role: 'assistant', content: snapshot },
-            ]);
-          } catch {
-            // skip malformed chunks
+        for (const eventBlock of eventBlocks) {
+          const lines = eventBlock.split('\n').filter((line) => line.startsWith('data: '));
+          for (const line of lines) {
+            const data = line.replace('data: ', '');
+            if (data === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(data) as { text?: string; citations?: Citation[] };
+
+              if (Array.isArray(parsed.citations)) {
+                activeCitations = parsed.citations;
+                setMessages((prev) => [
+                  ...prev.slice(0, -1),
+                  { role: 'assistant', content: accumulated, citations: activeCitations },
+                ]);
+              }
+
+              if (typeof parsed.text === 'string') {
+                accumulated = accumulated + parsed.text;
+                const snapshot = accumulated;
+                setMessages((prev) => [
+                  ...prev.slice(0, -1),
+                  { role: 'assistant', content: snapshot, citations: activeCitations },
+                ]);
+              }
+            } catch {
+              // skip malformed chunks
+            }
           }
         }
       }
@@ -102,6 +131,22 @@ export default function ChatInterface({ matterId, entryCount }: Props) {
       e.preventDefault();
       sendMessage(input);
     }
+  }
+
+  function getReferencedCitations(message: Message): Citation[] {
+    if (message.role !== 'assistant' || !message.citations || message.citations.length === 0) {
+      return [];
+    }
+
+    const referencedIds = Array.from(
+      new Set(Array.from(message.content.matchAll(/\[([a-f0-9]{24})\]/gi), (match) => match[1]))
+    );
+    if (referencedIds.length === 0) return [];
+
+    const citationsById = new Map(message.citations.map((citation) => [citation.id, citation]));
+    return referencedIds
+      .map((id) => citationsById.get(id))
+      .filter((citation): citation is Citation => Boolean(citation));
   }
 
   return (
@@ -143,8 +188,10 @@ export default function ChatInterface({ matterId, entryCount }: Props) {
               </div>
             </div>
           ) : (
-            messages.map((msg, i) => (
-              <div key={i} className={cn('flex gap-3', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+            messages.map((msg, i) => {
+              const referencedCitations = getReferencedCitations(msg);
+              return (
+                <div key={i} className={cn('flex gap-3', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {msg.role === 'assistant' && (
                   <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Bot className="w-4 h-4 text-blue-600" />
@@ -159,7 +206,34 @@ export default function ChatInterface({ matterId, entryCount }: Props) {
                   {msg.role === 'user' ? (
                     msg.content
                   ) : msg.content ? (
-                    <MarkdownContent text={msg.content} />
+                    <div className="space-y-2">
+                      <MarkdownContent text={msg.content} />
+                      {referencedCitations.length > 0 && (
+                        <div className="pt-2 border-t border-slate-200">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5">
+                            Sources
+                          </p>
+                          <div className="space-y-1.5">
+                            {referencedCitations.map((citation) => (
+                              <div key={citation.id} className="text-xs text-slate-600 flex items-center gap-1.5 flex-wrap">
+                                <span className="font-medium text-slate-700">{citation.documentName}</span>
+                                <span>
+                                  {citation.sourcePageNumber ? `Page ${citation.sourcePageNumber}` : 'Page not specified'}
+                                </span>
+                                <a
+                                  href={citation.documentUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:underline"
+                                >
+                                  View file <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <span className="flex items-center gap-2 text-sm text-slate-500">
                       <Loader2 className="w-3 h-3 animate-spin" /> Thinking…
@@ -172,7 +246,8 @@ export default function ChatInterface({ matterId, entryCount }: Props) {
                   </div>
                 )}
               </div>
-            ))
+              );
+            })
           )}
           <div ref={bottomRef} />
         </div>

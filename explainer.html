@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MedChron AI — Explainer</title>
+<style>
+  :root {
+    --blue: #2563eb;
+    --blue-dark: #1d4ed8;
+    --blue-deep: #0c1a36;
+    --blue-soft: #93c5fd;
+    --blue-pale: #dbeafe;
+    --bg: #f8fafc;
+    --paper: #ffffff;
+    --ink: #0f172a;
+    --ink-2: #334155;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --amber: #f59e0b;
+    --amber-pale: #fef3c7;
+    --green: #16a34a;
+    --green-pale: #dcfce7;
+    --red: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #06122e; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    color: var(--ink);
+    overflow: hidden;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  .stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--blue-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .frame {
+    width: min(96vw, 1600px);
+    aspect-ratio: 16/9;
+    background: var(--bg);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+  }
+
+  /* SCENES */
+  .scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 600ms ease;
+    padding: 64px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .scene.active {
+    opacity: 1;
+    visibility: visible;
+  }
+  .scene .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--blue);
+    margin-bottom: 18px;
+    opacity: 0;
+    animation: fadeUp 700ms 100ms forwards;
+  }
+  .scene .headline {
+    font-size: clamp(36px, 5vw, 72px);
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 22px;
+    opacity: 0;
+    animation: fadeUp 800ms 200ms forwards;
+  }
+  .scene .headline em { color: var(--blue); font-style: normal; }
+  .scene .narration {
+    font-size: clamp(18px, 1.8vw, 26px);
+    line-height: 1.45;
+    color: var(--ink-2);
+    max-width: 64ch;
+    opacity: 0;
+    animation: fadeUp 800ms 400ms forwards;
+  }
+  .scene.dark { background: var(--blue-deep); }
+  .scene.dark .headline { color: #f1f5f9; }
+  .scene.dark .narration { color: #cbd5e1; }
+  .scene.dark .eyebrow { color: var(--blue-soft); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  @keyframes paperPileUp {
+    from { transform: translateY(40px) scale(0.85); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+  }
+  @keyframes typewriter {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+
+  /* ============================
+     SCENE 1 — The 5,000 page problem
+     ============================ */
+  .s1 {
+    background: linear-gradient(135deg, #0c1a36 0%, #1e3a8a 100%);
+    color: white;
+  }
+  .s1 .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 60px;
+    height: 100%;
+  }
+  .s1 .left .eyebrow { color: var(--blue-soft); }
+  .s1 .left .headline { color: white; }
+  .s1 .left .narration { color: #cbd5e1; }
+  .s1 .paper-stack {
+    position: relative;
+    width: 320px;
+    height: 380px;
+    margin: 0 auto;
+  }
+  .s1 .paper {
+    position: absolute;
+    width: 220px;
+    height: 280px;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.4);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .s1 .paper::before {
+    content: "";
+    position: absolute;
+    top: 24px;
+    left: 18px;
+    right: 18px;
+    height: 8px;
+    background: #cbd5e1;
+    border-radius: 2px;
+  }
+  .s1 .paper::after {
+    content: "";
+    position: absolute;
+    top: 42px;
+    left: 18px;
+    width: 60%;
+    height: 5px;
+    background: #e2e8f0;
+    border-radius: 2px;
+  }
+  .s1 .paper:nth-child(1) { bottom: 0;   transform: translateX(-50%) translateY(0)   rotate(-3deg); opacity: 0; animation: paperPileUp 800ms 500ms forwards; }
+  .s1 .paper:nth-child(2) { bottom: 14px; transform: translateX(-50%) translateY(0) rotate(2deg);  opacity: 0; animation: paperPileUp 800ms 700ms forwards; }
+  .s1 .paper:nth-child(3) { bottom: 28px; transform: translateX(-50%) translateY(0) rotate(-1deg); opacity: 0; animation: paperPileUp 800ms 900ms forwards; }
+  .s1 .paper:nth-child(4) { bottom: 42px; transform: translateX(-50%) translateY(0) rotate(3deg);  opacity: 0; animation: paperPileUp 800ms 1100ms forwards; }
+  .s1 .paper:nth-child(5) { bottom: 56px; transform: translateX(-50%) translateY(0) rotate(-2deg); opacity: 0; animation: paperPileUp 800ms 1300ms forwards; }
+  .s1 .page-counter {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: var(--amber);
+    color: #1a1a1a;
+    padding: 12px 18px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 22px;
+    box-shadow: 0 8px 24px rgba(245,158,11,0.5);
+    opacity: 0;
+    animation: scaleIn 600ms 1500ms forwards;
+  }
+
+  /* ============================
+     SCENE 2 — Cost
+     ============================ */
+  .s2 .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 40px;
+  }
+  .s2 .stat {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 28px;
+    opacity: 0;
+  }
+  .s2 .stat:nth-child(1) { animation: scaleIn 600ms 600ms forwards; }
+  .s2 .stat:nth-child(2) { animation: scaleIn 600ms 850ms forwards; }
+  .s2 .stat:nth-child(3) { animation: scaleIn 600ms 1100ms forwards; }
+  .s2 .stat .big {
+    font-size: clamp(40px, 5vw, 64px);
+    font-weight: 800;
+    color: var(--blue);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .s2 .stat .label {
+    margin-top: 12px;
+    font-size: 15px;
+    color: var(--muted);
+  }
+  .s2 .stat .icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+    opacity: 0.7;
+  }
+
+  /* ============================
+     SCENE 3 — Product hero
+     ============================ */
+  .s3 {
+    background: linear-gradient(160deg, var(--bg) 0%, #e8f1ff 100%);
+  }
+  .s3 .layout {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 60px;
+    align-items: center;
+    height: 100%;
+  }
+  .s3 .mockup {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(15,30,61,0.2);
+    border: 1px solid var(--line);
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeUp 900ms 400ms forwards;
+  }
+  .s3 .mockup .top {
+    background: linear-gradient(180deg, #1e40af, #1e3a8a);
+    color: white;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .s3 .mockup .top .dot {
+    width: 32px; height: 32px;
+    background: white;
+    border-radius: 8px;
+    color: var(--blue);
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+  }
+  .s3 .mockup .body {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .s3 .mockup .body .feature {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px;
+    text-align: center;
+  }
+  .s3 .mockup .body .feature .ico {
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+  .s3 .mockup .body .feature .lab {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .s3 .badges {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 22px;
+    opacity: 0;
+    animation: fadeUp 700ms 900ms forwards;
+  }
+  .s3 .badge {
+    background: white;
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  /* ============================
+     SCENE 4 — Chronology demo
+     ============================ */
+  .s4 .layout {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 50px;
+    height: 100%;
+    align-items: center;
+  }
+  .s4 .timeline {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+    max-height: 500px;
+    overflow: hidden;
+    box-shadow: 0 16px 40px rgba(15,30,61,0.12);
+  }
+  .s4 .entry {
+    display: grid;
+    grid-template-columns: 80px 12px 1fr;
+    gap: 12px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--line);
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  .s4 .entry:nth-child(1) { animation: entrySlide 500ms 400ms forwards; }
+  .s4 .entry:nth-child(2) { animation: entrySlide 500ms 700ms forwards; }
+  .s4 .entry:nth-child(3) { animation: entrySlide 500ms 1000ms forwards; }
+  .s4 .entry:nth-child(4) { animation: entrySlide 500ms 1300ms forwards; }
+  .s4 .entry:nth-child(5) { animation: entrySlide 500ms 1600ms forwards; }
+  @keyframes entrySlide {
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .s4 .entry .date {
+    font-family: "SF Mono", monospace;
+    font-size: 11px;
+    color: var(--muted);
+    padding-top: 4px;
+  }
+  .s4 .entry .marker {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid var(--line);
+    margin-top: 6px;
+  }
+  .s4 .entry.verified .marker {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .s4 .entry.critical .marker {
+    background: var(--red);
+    border-color: var(--red);
+  }
+  .s4 .entry .body .tags {
+    display: flex; gap: 4px; margin-bottom: 4px;
+  }
+  .s4 .entry .body .tag {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .s4 .tag.gp { background: var(--blue-pale); color: var(--blue-dark); }
+  .s4 .tag.crit { background: #fee2e2; color: var(--red); }
+  .s4 .tag.pre { background: #f1f5f9; color: var(--muted); }
+  .s4 .tag.v { background: var(--green-pale); color: var(--green); }
+  .s4 .entry .body .who { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .s4 .entry .body .what { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+
+  /* ============================
+     SCENE 5 — Bundle PDF
+     ============================ */
+  .s5 .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+    height: 100%;
+  }
+  .s5 .pdf-stack {
+    position: relative;
+    width: 360px;
+    height: 460px;
+    margin: 0 auto;
+  }
+  .s5 .pdf {
+    position: absolute;
+    width: 320px;
+    height: 420px;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 16px 40px rgba(15,30,61,0.18);
+    border: 1px solid var(--line);
+    padding: 28px 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+  }
+  .s5 .pdf:nth-child(1) {
+    top: 30px; transform: translateX(calc(-50% + 16px)) rotate(2deg);
+    animation: fadeIn 500ms 600ms forwards;
+  }
+  .s5 .pdf:nth-child(2) {
+    top: 15px; transform: translateX(calc(-50% - 6px)) rotate(-1deg);
+    animation: fadeIn 500ms 800ms forwards;
+  }
+  .s5 .pdf:nth-child(3) {
+    top: 0; transform: translateX(-50%);
+    animation: fadeIn 500ms 1000ms forwards;
+  }
+  .s5 .pdf-front .crest {
+    height: 6px; background: var(--blue); width: 80px; margin: 0 auto 18px;
+  }
+  .s5 .pdf-front .head {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .s5 .pdf-front .meta {
+    text-align: center;
+    font-size: 9px;
+    color: var(--muted);
+    margin-bottom: 22px;
+  }
+  .s5 .pdf-front .watermark {
+    display: inline-block;
+    border: 1.5px solid #d97706;
+    color: #92400e;
+    padding: 4px 8px;
+    font-size: 8px;
+    font-weight: 700;
+    margin: 0 auto;
+  }
+  .s5 .pdf-front .rows {
+    margin-top: 20px;
+  }
+  .s5 .pdf-front .row {
+    height: 5px;
+    background: var(--line);
+    border-radius: 2px;
+    margin-bottom: 8px;
+  }
+  .s5 .pdf-front .row.short { width: 60%; }
+
+  /* ============================
+     SCENE 6 — Chat demo
+     ============================ */
+  .s6 .layout {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 50px;
+    align-items: center;
+    height: 100%;
+  }
+  .s6 .chat {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 16px 40px rgba(15,30,61,0.12);
+  }
+  .s6 .question {
+    background: var(--blue);
+    color: white;
+    padding: 14px 18px;
+    border-radius: 18px 18px 4px 18px;
+    align-self: flex-end;
+    margin-left: 60px;
+    margin-bottom: 18px;
+    font-size: 15px;
+    line-height: 1.45;
+    opacity: 0;
+    animation: fadeUp 600ms 400ms forwards;
+  }
+  .s6 .answer {
+    background: var(--bg);
+    color: var(--ink);
+    padding: 16px 20px;
+    border-radius: 18px 18px 18px 4px;
+    margin-right: 60px;
+    font-size: 14px;
+    line-height: 1.55;
+    opacity: 0;
+    animation: fadeUp 600ms 1000ms forwards;
+  }
+  .s6 .citation {
+    display: inline-block;
+    background: var(--blue-pale);
+    color: var(--blue-dark);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    margin: 0 2px;
+  }
+  .s6 .typing {
+    display: inline-flex;
+    gap: 4px;
+    padding: 14px 18px;
+    background: var(--bg);
+    border-radius: 18px 18px 18px 4px;
+    margin-right: 60px;
+    margin-bottom: 12px;
+    opacity: 0;
+    animation: fadeIn 200ms 600ms forwards, fadeOut 200ms 1000ms forwards;
+  }
+  @keyframes fadeOut { to { opacity: 0; height: 0; padding: 0; margin: 0; } }
+  .s6 .typing span {
+    width: 8px; height: 8px;
+    background: var(--muted);
+    border-radius: 50%;
+    animation: typingDot 1.2s infinite;
+  }
+  .s6 .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .s6 .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingDot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* ============================
+     SCENE 7 — Compliance
+     ============================ */
+  .s7 .layout {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-top: 50px;
+  }
+  .s7 .badge-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(147,197,253,0.3);
+    border-radius: 10px;
+    padding: 24px 20px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  .s7 .badge-card:nth-child(1) { animation: fadeUp 500ms 400ms forwards; }
+  .s7 .badge-card:nth-child(2) { animation: fadeUp 500ms 600ms forwards; }
+  .s7 .badge-card:nth-child(3) { animation: fadeUp 500ms 800ms forwards; }
+  .s7 .badge-card:nth-child(4) { animation: fadeUp 500ms 1000ms forwards; }
+  .s7 .badge-card .ic {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+  .s7 .badge-card .ti {
+    font-weight: 700;
+    color: #f1f5f9;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .s7 .badge-card .su {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.4;
+  }
+
+  /* ============================
+     SCENE 8 — CTA
+     ============================ */
+  .s8 {
+    background: radial-gradient(ellipse at center, #1e3a8a 0%, #0c1a36 60%, #060c1a 100%);
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+  }
+  .s8 .eyebrow { color: var(--blue-soft); }
+  .s8 .headline { color: white; text-align: center; max-width: none; }
+  .s8 .headline em { color: var(--blue-soft); }
+  .s8 .narration { color: #cbd5e1; text-align: center; margin: 0 auto; }
+  .s8 .cta {
+    display: inline-block;
+    background: var(--blue);
+    color: white;
+    padding: 18px 42px;
+    border-radius: 999px;
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 32px;
+    opacity: 0;
+    animation: fadeUp 600ms 800ms forwards, pulse 2s 1500ms infinite;
+    box-shadow: 0 12px 32px rgba(37,99,235,0.45);
+  }
+  .s8 .url {
+    color: var(--blue-soft);
+    font-family: "SF Mono", monospace;
+    margin-top: 24px;
+    font-size: 15px;
+    opacity: 0;
+    animation: fadeIn 600ms 1200ms forwards;
+  }
+
+  /* ============================
+     CONTROLS + PROGRESS
+     ============================ */
+  .controls {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    border-radius: 999px;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    z-index: 50;
+  }
+  .controls button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    color: var(--ink);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 16px;
+  }
+  .controls button:hover { background: var(--bg); }
+  .controls .time {
+    font-family: "SF Mono", monospace;
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 80px;
+    text-align: center;
+  }
+
+  .progress {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    z-index: 40;
+  }
+  .progress .bar {
+    height: 100%;
+    background: var(--blue);
+    width: 0;
+    transition: width 100ms linear;
+  }
+
+  .scenes-nav {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 40;
+  }
+  .scenes-nav .dot {
+    width: 30px;
+    height: 6px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 200ms;
+  }
+  .scenes-nav .dot.active { background: var(--blue-soft); }
+  .scenes-nav .dot.played { background: rgba(147,197,253,0.5); }
+
+  /* Watermark/branding */
+  .brand-watermark {
+    position: absolute;
+    top: 20px;
+    right: 28px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 600;
+    z-index: 5;
+  }
+  .scene.dark .brand-watermark { color: rgba(255,255,255,0.4); }
+
+  /* ============================
+     NEW STEP SCENES — Upload / OCR / Verify / Summary
+     ============================ */
+  .su .layout, .so .layout, .sv .layout, .sm .layout {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    gap: 50px;
+    align-items: center;
+    height: 100%;
+  }
+
+  /* Upload */
+  .su .dropzone {
+    background: white;
+    border: 2px dashed var(--blue);
+    border-radius: 16px;
+    padding: 26px;
+    box-shadow: 0 16px 40px rgba(15,30,61,0.12);
+    opacity: 0;
+    animation: scaleIn 700ms 400ms forwards;
+  }
+  .su .dz-icon { font-size: 38px; text-align: center; margin-bottom: 6px; }
+  .su .dz-head { text-align: center; font-weight: 700; color: var(--blue); margin-bottom: 4px; }
+  .su .dz-sub { text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+  .su .files { display: flex; flex-direction: column; gap: 8px; }
+  .su .file-row {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 12px;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 13px;
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  .su .file-row:nth-child(1) { animation: entrySlide 500ms 600ms forwards; }
+  .su .file-row:nth-child(2) { animation: entrySlide 500ms 800ms forwards; }
+  .su .file-row:nth-child(3) { animation: entrySlide 500ms 1000ms forwards; }
+  .su .file-row:nth-child(4) { animation: entrySlide 500ms 1200ms forwards; }
+  .su .file-row .ic { font-size: 15px; }
+  .su .fr-main { min-width: 0; }
+  .su .fr-top {
+    display: flex; justify-content: space-between;
+    align-items: center; gap: 10px; margin-bottom: 7px;
+  }
+  .su .file-row .nm { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .su .file-row .st { position: relative; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .su .file-row .st .up { color: var(--amber); }
+  .su .file-row .st .done {
+    position: absolute; right: 0; top: 0;
+    color: var(--green); opacity: 0;
+  }
+  .su .bar { height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+  .su .bar i {
+    display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, var(--blue), #60a5fa);
+    border-radius: 3px;
+  }
+  /* Sequential upload — each file fills, then flips to Done */
+  .su .file-row:nth-child(1) .bar i { animation: barFill 1200ms 900ms ease-out forwards; }
+  .su .file-row:nth-child(2) .bar i { animation: barFill 1200ms 1350ms ease-out forwards; }
+  .su .file-row:nth-child(3) .bar i { animation: barFill 1200ms 1800ms ease-out forwards; }
+  .su .file-row:nth-child(4) .bar i { animation: barFill 1200ms 2250ms ease-out forwards; }
+  .su .file-row:nth-child(1) .st .up { animation: softOut 200ms 2100ms forwards; }
+  .su .file-row:nth-child(2) .st .up { animation: softOut 200ms 2550ms forwards; }
+  .su .file-row:nth-child(3) .st .up { animation: softOut 200ms 3000ms forwards; }
+  .su .file-row:nth-child(4) .st .up { animation: softOut 200ms 3450ms forwards; }
+  .su .file-row:nth-child(1) .st .done { animation: fadeIn 260ms 2100ms forwards; }
+  .su .file-row:nth-child(2) .st .done { animation: fadeIn 260ms 2550ms forwards; }
+  .su .file-row:nth-child(3) .st .done { animation: fadeIn 260ms 3000ms forwards; }
+  .su .file-row:nth-child(4) .st .done { animation: fadeIn 260ms 3450ms forwards; }
+  @keyframes barFill { from { width: 0; } to { width: 100%; } }
+  @keyframes softOut { to { opacity: 0; } }
+
+  /* OCR */
+  .so .ocr-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 16px 40px rgba(15,30,61,0.12);
+    opacity: 0;
+    animation: fadeUp 700ms 400ms forwards;
+  }
+  .so .ocr-card + .ocr-card { margin-top: 14px; animation-delay: 850ms; }
+  .so .cap {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); font-weight: 700; margin-bottom: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .so .scan-line { height: 7px; border-radius: 2px; margin-bottom: 8px; background: #cbd5e1; }
+  .so .scan-line.a { width: 92%; transform: rotate(-0.4deg); }
+  .so .scan-line.b { width: 78%; background: #d3dae3; transform: rotate(0.35deg); }
+  .so .scan-line.c { width: 86%; opacity: 0.7; }
+  .so .scan-line.s { width: 54%; }
+  .so .text-line { height: 7px; border-radius: 2px; margin-bottom: 8px; background: var(--blue-pale); }
+  .so .text-line.full { width: 94%; background: var(--blue-soft); }
+  .so .text-line.s { width: 60%; background: var(--blue-soft); }
+  .so .pagetag {
+    display: inline-block; margin-top: 6px;
+    font-family: "SF Mono", monospace; font-size: 10px;
+    background: var(--blue-pale); color: var(--blue-dark);
+    padding: 2px 8px; border-radius: 3px; font-weight: 600;
+  }
+  .so .badge-ok { color: var(--green); font-weight: 700; }
+
+  /* OCR — scanning beam + line-by-line reveal */
+  .so .ocr-card { position: relative; overflow: hidden; }
+  .so .scan-beam {
+    position: absolute; left: 0; right: 0; top: 6%; height: 26px;
+    background: linear-gradient(180deg, rgba(37,99,235,0) 0%, rgba(37,99,235,0.28) 50%, rgba(37,99,235,0) 100%);
+    opacity: 0; pointer-events: none;
+    animation: ocrBeam 1500ms 600ms ease-in-out 2;
+  }
+  @keyframes ocrBeam {
+    0%   { top: 6%;  opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { top: 86%; opacity: 0; }
+  }
+  .so .ocr-card:nth-of-type(1) .scan-line { opacity: 0; animation: fadeIn 320ms ease forwards; }
+  .so .ocr-card:nth-of-type(1) .scan-line:nth-child(3) { animation-delay: 600ms; }
+  .so .ocr-card:nth-of-type(1) .scan-line:nth-child(4) { animation-delay: 760ms; }
+  .so .ocr-card:nth-of-type(1) .scan-line:nth-child(5) { animation-delay: 920ms; }
+  .so .ocr-card:nth-of-type(1) .scan-line:nth-child(6) { animation-delay: 1080ms; }
+  .so .ocr-card:nth-of-type(2) .text-line { opacity: 0; transform: translateX(-10px); animation: entrySlide 380ms ease forwards; }
+  .so .ocr-card:nth-of-type(2) .text-line:nth-child(2) { animation-delay: 1550ms; }
+  .so .ocr-card:nth-of-type(2) .text-line:nth-child(3) { animation-delay: 1700ms; }
+  .so .ocr-card:nth-of-type(2) .text-line:nth-child(4) { animation-delay: 1850ms; }
+  .so .ocr-card:nth-of-type(2) .text-line:nth-child(5) { animation-delay: 2000ms; }
+
+  /* Hero — feature tiles pop in one by one */
+  .s3 .mockup .body .feature { opacity: 0; animation: scaleIn 480ms ease forwards; }
+  .s3 .mockup .body .feature:nth-child(1) { animation-delay: 800ms; }
+  .s3 .mockup .body .feature:nth-child(2) { animation-delay: 950ms; }
+  .s3 .mockup .body .feature:nth-child(3) { animation-delay: 1100ms; }
+
+  /* Chronology — "generating" indicator, then entries populate one by one */
+  .s4 .gen {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 600; color: var(--muted);
+    margin-bottom: 12px;
+    opacity: 0;
+    animation: fadeIn 300ms 300ms forwards, softOut 400ms 2050ms forwards;
+  }
+  .s4 .gen .gd { display: inline-flex; gap: 4px; }
+  .s4 .gen .gd i {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--blue); animation: typingDot 1.2s infinite;
+  }
+  .s4 .gen .gd i:nth-child(2) { animation-delay: 0.2s; }
+  .s4 .gen .gd i:nth-child(3) { animation-delay: 0.4s; }
+  .s4 .entry:nth-child(1) { animation: entrySlide 500ms 2150ms forwards; }
+  .s4 .entry:nth-child(2) { animation: entrySlide 500ms 2500ms forwards; }
+  .s4 .entry:nth-child(3) { animation: entrySlide 500ms 2850ms forwards; }
+  .s4 .entry:nth-child(4) { animation: entrySlide 500ms 3200ms forwards; }
+  .s4 .entry:nth-child(5) { animation: entrySlide 500ms 3550ms forwards; }
+
+  /* Used by the sequencer to restart a scene's animations on entry */
+  .scene.anim-reset, .scene.anim-reset * { animation: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .so .scan-beam { display: none; }
+    .so .ocr-card:nth-of-type(1) .scan-line,
+    .so .ocr-card:nth-of-type(2) .text-line,
+    .s3 .mockup .body .feature,
+    .s4 .entry { opacity: 1; transform: none; animation: none; }
+    .s4 .gen { display: none; }
+    .su .bar i { width: 100%; animation: none; }
+    .su .file-row .st .up { display: none; }
+    .su .file-row .st .done { position: static; opacity: 1; animation: none; }
+  }
+
+  /* Verify */
+  .sv .vcard {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 16px 40px rgba(15,30,61,0.12);
+    opacity: 0;
+    animation: fadeUp 700ms 400ms forwards;
+  }
+  .sv .ventry {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--green);
+    background: var(--green-pale);
+    border-radius: 10px;
+  }
+  .sv .check {
+    width: 26px; height: 26px; border-radius: 7px;
+    border: 2px solid var(--green); background: white;
+    display: grid; place-items: center;
+    color: var(--green); font-weight: 800; font-size: 15px;
+    opacity: 0; animation: scaleIn 500ms 900ms forwards;
+  }
+  .sv .ventry .who { font-weight: 600; color: var(--ink); font-size: 14px; }
+  .sv .ventry .what { font-size: 13px; color: var(--ink-2); margin-top: 3px; }
+  .sv .ventry .vt {
+    display: inline-block; margin-top: 8px;
+    font-size: 11px; font-weight: 700; color: var(--green);
+  }
+  .sv .audit { margin-top: 16px; border-left: 2px solid var(--line); padding-left: 14px; }
+  .sv .audit div {
+    font-family: "SF Mono", monospace; font-size: 11px;
+    color: var(--muted); margin-bottom: 6px;
+    opacity: 0; transform: translateX(-8px);
+  }
+  .sv .audit div:nth-child(1) { animation: entrySlide 400ms 1200ms forwards; }
+  .sv .audit div:nth-child(2) { animation: entrySlide 400ms 1450ms forwards; }
+  .sv .audit div:nth-child(3) { animation: entrySlide 400ms 1700ms forwards; }
+
+  /* Summary */
+  .sm .summary {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 26px;
+    box-shadow: 0 16px 40px rgba(15,30,61,0.12);
+    max-height: 70vh;
+    overflow: hidden;
+    opacity: 0;
+    animation: fadeUp 800ms 400ms forwards;
+  }
+  .sm .summary h4 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 2px; }
+  .sm .summary .ref { font-family: "SF Mono", monospace; font-size: 11px; color: var(--muted); margin-bottom: 18px; }
+  .sm .para { font-size: 13.5px; color: var(--ink-2); line-height: 1.65; margin-bottom: 13px; opacity: 0; }
+  .sm .para:nth-of-type(1) { animation: fadeUp 600ms 700ms forwards; }
+  .sm .para:nth-of-type(2) { animation: fadeUp 600ms 1050ms forwards; }
+  .sm .para:nth-of-type(3) { animation: fadeUp 600ms 1400ms forwards; }
+  .sm .chip {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 1px 7px; border-radius: 3px;
+    background: var(--blue-pale); color: var(--blue-dark);
+  }
+  .sm .chip.crit { background: #fee2e2; color: var(--red); }
+  .sm .chip.pre { background: #f1f5f9; color: var(--muted); }
+  .sm .cite { font-family: "SF Mono", monospace; font-size: 11px; color: var(--blue); font-weight: 600; }
+
+  /* ============================
+     RESPONSIVE / MOBILE
+     ============================ */
+  @media (max-width: 900px) {
+    html, body { overflow: auto; }
+    .stage { display: block; height: auto; min-height: 100vh; }
+    .frame {
+      width: 100vw;
+      aspect-ratio: auto;
+      min-height: 100vh;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .scene {
+      padding: 80px 22px 118px;
+      overflow-y: auto;
+      justify-content: flex-start;
+    }
+    .scene .headline { font-size: clamp(28px, 8vw, 46px); }
+    .scene .narration { font-size: clamp(16px, 4.4vw, 21px); max-width: 100%; }
+
+    .s1 .layout, .s3 .layout, .s4 .layout, .s5 .layout, .s6 .layout,
+    .su .layout, .so .layout, .sv .layout, .sm .layout {
+      grid-template-columns: 1fr;
+      gap: 26px;
+      height: auto;
+    }
+    .s2 .grid { grid-template-columns: 1fr; gap: 14px; margin-top: 26px; }
+    .s7 .layout { grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 26px; }
+
+    .s1 .paper-stack { width: 230px; height: 290px; }
+    .s1 .page-counter { font-size: 17px; padding: 9px 13px; }
+    .s5 .pdf-stack { width: 280px; height: 360px; }
+    .s5 .pdf { width: 250px; height: 330px; padding: 22px 18px; }
+    .s4 .timeline { max-height: none; }
+    .s6 .question { margin-left: 24px; }
+    .s6 .answer { margin-right: 24px; }
+    .sm .summary { max-height: none; }
+
+    .scenes-nav { flex-wrap: wrap; max-width: 92vw; justify-content: center; top: 14px; }
+    .scenes-nav .dot { width: 16px; height: 5px; }
+    .controls { bottom: 14px; gap: 8px; padding: 8px 12px; }
+    .controls button { font-size: 14px; padding: 5px 8px; }
+    .controls .time { min-width: 60px; font-size: 11px; }
+  }
+
+  @media (max-width: 480px) {
+    .scene { padding: 72px 16px 112px; }
+    .scene .headline br { display: none; }
+    .s7 .layout { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="frame" id="frame">
+
+    <!-- SCENE 1 -->
+    <section class="scene s1 dark active" data-duration="7000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="layout">
+        <div class="left">
+          <div class="eyebrow">The Problem</div>
+          <h1 class="headline">A 5,000-page<br/>medical bundle.<br/><em>Every case.</em></h1>
+          <p class="narration">Every clinical-negligence and personal-injury claim starts with thousands of pages of medical records — GP notes, hospital files, A&E sheets, consultant letters.</p>
+        </div>
+        <div class="right">
+          <div class="paper-stack">
+            <div class="paper"></div>
+            <div class="paper"></div>
+            <div class="paper"></div>
+            <div class="paper"></div>
+            <div class="paper"></div>
+            <div class="page-counter">5,000+ pages</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 2 -->
+    <section class="scene s2" data-duration="8000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="eyebrow">The Cost</div>
+      <h1 class="headline">And someone<br/>has to read all of it.</h1>
+      <p class="narration">A paralegal spends 30 to 50 hours building a single medical chronology — at £40 to £80 an hour. That's £2,400 of unrecoverable cost on every complex case.</p>
+      <div class="grid">
+        <div class="stat">
+          <div class="icon">⏱</div>
+          <div class="big">30-50</div>
+          <div class="label">Paralegal hours per chronology</div>
+        </div>
+        <div class="stat">
+          <div class="icon">£</div>
+          <div class="big">£2,400</div>
+          <div class="label">Average cost per case</div>
+        </div>
+        <div class="stat">
+          <div class="icon">⚠</div>
+          <div class="big">1 miss</div>
+          <div class="label">One missed date and the case dies</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 3 -->
+    <section class="scene s3" data-duration="8000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="layout">
+        <div class="left">
+          <div class="eyebrow">Meet MedChron AI</div>
+          <h1 class="headline">The AI workbench<br/>for <em>UK</em> litigation.</h1>
+          <p class="narration">Built for clinical-negligence and personal-injury solicitors. Upload the records once — get a verifiable chronology, a court-ready bundle, and a chat that cites every line.</p>
+          <div class="badges">
+            <span class="badge">Source-anchored</span>
+            <span class="badge">UK data residency</span>
+            <span class="badge">SRA-defensible</span>
+            <span class="badge">Built for AvMA firms</span>
+          </div>
+        </div>
+        <div class="right">
+          <div class="mockup">
+            <div class="top">
+              <div class="dot">⚖</div>
+              <div>
+                <div>MedChron AI</div>
+                <div style="font-size:11px;opacity:0.7">Legal platform</div>
+              </div>
+            </div>
+            <div class="body">
+              <div class="feature"><div class="ico">🕒</div><div class="lab">Chronology</div></div>
+              <div class="feature"><div class="ico">📦</div><div class="lab">Bundle</div></div>
+              <div class="feature"><div class="ico">💬</div><div class="lab">Chat</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- UPLOAD -->
+    <section class="scene su" data-duration="8000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="layout">
+        <div class="left">
+          <div class="eyebrow">01 — Upload</div>
+          <h1 class="headline">Drop the file in.<br/><em>That's it.</em></h1>
+          <p class="narration">Drag and drop the whole set — GP notes, hospital records, A&amp;E sheets, consultant letters. Any format, any size. Each document is tracked separately as it processes.</p>
+        </div>
+        <div class="right">
+          <div class="dropzone">
+            <div class="dz-icon">⬆</div>
+            <div class="dz-head">Drop documents to upload</div>
+            <div class="dz-sub">PDF, scans &amp; images · no page limit</div>
+            <div class="files">
+              <div class="file-row">
+                <span class="ic">📄</span>
+                <div class="fr-main">
+                  <div class="fr-top"><span class="nm">GP_records_full.pdf</span><span class="st"><span class="up">Uploading…</span><span class="done">✓ Done</span></span></div>
+                  <div class="bar"><i></i></div>
+                </div>
+              </div>
+              <div class="file-row">
+                <span class="ic">📄</span>
+                <div class="fr-main">
+                  <div class="fr-top"><span class="nm">Royal_London_Hospital.pdf</span><span class="st"><span class="up">Uploading…</span><span class="done">✓ Done</span></span></div>
+                  <div class="bar"><i></i></div>
+                </div>
+              </div>
+              <div class="file-row">
+                <span class="ic">📄</span>
+                <div class="fr-main">
+                  <div class="fr-top"><span class="nm">Consultant_letters.pdf</span><span class="st"><span class="up">Uploading…</span><span class="done">✓ Done</span></span></div>
+                  <div class="bar"><i></i></div>
+                </div>
+              </div>
+              <div class="file-row">
+                <span class="ic">📄</span>
+                <div class="fr-main">
+                  <div class="fr-top"><span class="nm">AE_attendance_notes.pdf</span><span class="st"><span class="up">Uploading…</span><span class="done">✓ Done</span></span></div>
+                  <div class="bar"><i></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OCR -->
+    <section class="scene so" data-duration="8000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="layout">
+        <div class="left">
+          <div class="eyebrow">02 — Text extraction</div>
+          <h1 class="headline">Even the<br/><em>scanned</em> pages.</h1>
+          <p class="narration">Around 70% of NHS records are scanned images or faxes. AWS Textract OCR reads them — including mixed handwriting — and keeps the text against its real page number, so every fact stays traceable.</p>
+        </div>
+        <div class="right">
+          <div class="ocr-card">
+            <div class="scan-beam"></div>
+            <div class="cap"><span>Scanned source</span><span>📠 image</span></div>
+            <div class="scan-line a"></div>
+            <div class="scan-line b"></div>
+            <div class="scan-line c"></div>
+            <div class="scan-line s"></div>
+            <div class="pagetag">page 1,284 of 5,012</div>
+          </div>
+          <div class="ocr-card">
+            <div class="cap"><span>Extracted text</span><span class="badge-ok">✓ OCR complete</span></div>
+            <div class="text-line full"></div>
+            <div class="text-line"></div>
+            <div class="text-line full"></div>
+            <div class="text-line s"></div>
+            <div class="pagetag">linked → page 1,284</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 4 -->
+    <section class="scene s4" data-duration="11000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="layout">
+        <div class="left">
+          <div class="eyebrow">03 — Chronology</div>
+          <h1 class="headline">Every event,<br/><em>source-anchored.</em></h1>
+          <p class="narration">Upload the case file. The AI extracts every clinical event — date, provider, diagnosis, treatment, verbatim quote, and real page number. Every entry is verifiable in one click.</p>
+        </div>
+        <div class="right">
+          <div class="gen"><span class="gd"><i></i><i></i><i></i></span> Extracting clinical events from 4 documents…</div>
+          <div class="timeline">
+            <div class="entry">
+              <div class="date">2019-02-14</div>
+              <div class="marker"></div>
+              <div class="body">
+                <div class="tags"><span class="tag gp">GP Visit</span><span class="tag pre">Pre-existing</span></div>
+                <div class="who">Dr F. Al-Khatib · General Practice</div>
+                <div class="what">Annual asthma review</div>
+              </div>
+            </div>
+            <div class="entry verified">
+              <div class="date">2020-04-17</div>
+              <div class="marker"></div>
+              <div class="body">
+                <div class="tags"><span class="tag gp">GP Visit</span><span class="tag v">✓ Verified</span></div>
+                <div class="who">Dr F. Al-Khatib · General Practice</div>
+                <div class="what">Follow-up — anxiety</div>
+              </div>
+            </div>
+            <div class="entry critical">
+              <div class="date">2026-05-12</div>
+              <div class="marker"></div>
+              <div class="body">
+                <div class="tags"><span class="tag gp">A&amp;E</span><span class="tag crit">Causation Critical</span></div>
+                <div class="who">Royal London Hospital · Emergency Medicine</div>
+                <div class="what">Acute lower back pain — RTA</div>
+              </div>
+            </div>
+            <div class="entry">
+              <div class="date">2026-06-08</div>
+              <div class="marker"></div>
+              <div class="body">
+                <div class="tags"><span class="tag gp">Investigation</span></div>
+                <div class="who">London Imaging Centre · Radiology</div>
+                <div class="what">MRI lumbar spine — L4/L5 disc prolapse</div>
+              </div>
+            </div>
+            <div class="entry">
+              <div class="date">2026-07-22</div>
+              <div class="marker"></div>
+              <div class="body">
+                <div class="tags"><span class="tag gp">Referral</span></div>
+                <div class="who">Mr S. Wexler · Spinal Surgery</div>
+                <div class="what">Surgical opinion — microdiscectomy recommended</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VERIFY -->
+    <section class="scene sv" data-duration="8000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="layout">
+        <div class="left">
+          <div class="eyebrow">04 — Verify</div>
+          <h1 class="headline">Nothing ships<br/><em>unverified.</em></h1>
+          <p class="narration">Every AI entry has a verify checkbox and is fully editable. Bundles stay watermarked &lsquo;AI-Generated — Review Required&rsquo; until a fee earner signs each entry off. Every edit is logged — SRA-defensible.</p>
+        </div>
+        <div class="right">
+          <div class="vcard">
+            <div class="ventry">
+              <div class="check">✓</div>
+              <div>
+                <div class="who">Royal London Hospital · Emergency Medicine</div>
+                <div class="what">Acute lower back pain following RTA — 12 May 2026</div>
+                <div class="vt">✓ Verified by J. Okafor · fee earner</div>
+              </div>
+            </div>
+            <div class="audit">
+              <div>10:42  AI entry created · src p.1284</div>
+              <div>10:51  diagnosis edited · J. Okafor</div>
+              <div>10:52  marked verified · J. Okafor</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUMMARY -->
+    <section class="scene sm" data-duration="9000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="layout">
+        <div class="left">
+          <div class="eyebrow">05 — Summary</div>
+          <h1 class="headline">The case,<br/><em>in one read.</em></h1>
+          <p class="narration">A generated narrative — key events, causation-critical points, treatment gaps and pre-existing conditions. Written for counsel, every statement linked back to its chronology entry.</p>
+        </div>
+        <div class="right">
+          <div class="summary">
+            <h4>Case Summary — WEBB, Marcus James</h4>
+            <div class="ref">MC/2026/2902 · generated from 57 entries</div>
+            <p class="para">No record of a <span class="chip pre">pre-existing</span> back condition. GP history before May 2026 relates to asthma and anxiety only <span class="cite">#e1 #e2</span>.</p>
+            <p class="para">On 12 May 2026 the claimant attended A&amp;E with acute lumbar pain following an RTA — flagged <span class="chip crit">causation critical</span> <span class="cite">#a1b2</span>. MRI confirmed an L4/L5 disc prolapse <span class="cite">#c3d4</span>.</p>
+            <p class="para">A <span class="chip">treatment gap</span> of six weeks precedes the surgical referral; microdiscectomy was recommended on 22 Jul 2026 <span class="cite">#f5g6</span>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 5 -->
+    <section class="scene s5" data-duration="8000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="layout">
+        <div class="left">
+          <div class="eyebrow">06 — Bundle</div>
+          <h1 class="headline">Court-ready<br/>in <em>one click.</em></h1>
+          <p class="narration">Cover sheet, table of contents, full chronology, document index. Paginated, watermarked &lsquo;AI-generated — review required&rsquo;, and ready for counsel.</p>
+        </div>
+        <div class="right">
+          <div class="pdf-stack">
+            <div class="pdf"></div>
+            <div class="pdf"></div>
+            <div class="pdf pdf-front">
+              <div class="crest"></div>
+              <div class="head">MEDICAL CHRONOLOGY BUNDLE</div>
+              <div class="meta">WEBB, Marcus James · MC/2026/2902</div>
+              <div style="text-align:center;margin-bottom:18px">
+                <span class="watermark">AI-GENERATED — REVIEW REQUIRED</span>
+              </div>
+              <div class="rows">
+                <div class="row"></div>
+                <div class="row short"></div>
+                <div class="row"></div>
+                <div class="row"></div>
+                <div class="row short"></div>
+                <div class="row"></div>
+                <div class="row"></div>
+                <div class="row short"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 6 -->
+    <section class="scene s6" data-duration="11000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="layout">
+        <div class="left">
+          <div class="eyebrow">07 — Ask anything</div>
+          <h1 class="headline">Cite every line<br/>back to the <em>source.</em></h1>
+          <p class="narration">Vector-retrieved entries, GPT-4o reasoning, and a citation on every claim. Never make a counsel call without knowing exactly which page backs you up.</p>
+        </div>
+        <div class="right">
+          <div class="chat">
+            <div class="question">
+              Was there a pre-existing back condition before the May 2026 incident?
+            </div>
+            <div class="typing"><span></span><span></span><span></span></div>
+            <div class="answer">
+              No record of a pre-existing back condition in the GP notes. The first mention of lumbar pain follows the A&amp;E attendance on <strong>12 May 2026</strong> <span class="citation">#a1b2</span>, with an MRI confirming L4/L5 disc prolapse <span class="citation">#c3d4</span>. Earlier entries relate to asthma and anxiety only.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 7 -->
+    <section class="scene s7 dark" data-duration="8000">
+      <div class="brand-watermark">MedChron AI</div>
+      <div class="eyebrow">Built for UK Firms</div>
+      <h1 class="headline">Compliance, by default.</h1>
+      <p class="narration">Special-category health data under GDPR Article 9 requires more than a wrapper around ChatGPT. We built MedChron with the SRA, ICO, and AvMA workflow in mind from day one.</p>
+      <div class="layout">
+        <div class="badge-card">
+          <div class="ic">🇬🇧</div>
+          <div class="ti">UK data residency</div>
+          <div class="su">Azure UK South for AI &amp; OCR. Nothing leaves the region.</div>
+        </div>
+        <div class="badge-card">
+          <div class="ic">🛡</div>
+          <div class="ti">SRA-defensible</div>
+          <div class="su">Every AI entry verified by a fee earner before disclosure.</div>
+        </div>
+        <div class="badge-card">
+          <div class="ic">🔒</div>
+          <div class="ti">Signed DPA</div>
+          <div class="su">Article 9 health-data terms. No training on your data.</div>
+        </div>
+        <div class="badge-card">
+          <div class="ic">✓</div>
+          <div class="ti">Audit log</div>
+          <div class="su">Every view, edit and download recorded per matter.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 8 -->
+    <section class="scene s8 dark" data-duration="8000">
+      <div class="eyebrow">Ready when you are</div>
+      <h1 class="headline">Cut chronology time<br/>by <em>80%</em>.</h1>
+      <p class="narration">Reclaim 30 paralegal hours per case. Spend them on the work that actually wins matters.</p>
+      <a class="cta" href="mailto:daniotech7@gmail.com?subject=MedChron%20AI%20%E2%80%94%2015-minute%20demo%20request&amp;body=Hi%2C%0A%0AI%27d%20like%20to%20book%20a%2015-minute%20demo%20of%20MedChron%20AI.%0A%0AName%3A%0AFirm%3A%0APreferred%20times%3A%0A%0AThanks">Book a 15-minute demo</a>
+      <div class="url">medchron.ai</div>
+    </section>
+
+  </div>
+</div>
+
+<div class="scenes-nav" id="scenesNav"></div>
+<div class="controls" id="controls">
+  <button id="prevBtn" title="Previous scene">⏮</button>
+  <button id="playBtn" title="Play / Pause">⏸</button>
+  <button id="nextBtn" title="Next scene">⏭</button>
+  <span class="time" id="time">0:00 / 1:09</span>
+  <button id="restartBtn" title="Restart">↺</button>
+</div>
+<div class="progress"><div class="bar" id="progressBar"></div></div>
+
+<script>
+  // ---------------------------------------------------------------------------
+  // Sequencer: auto-advance through scenes based on their data-duration.
+  // All scenes mounted, swap via .active class for fade transitions.
+  // ---------------------------------------------------------------------------
+  const scenes = Array.from(document.querySelectorAll('.scene'));
+  const durations = scenes.map((s) => parseInt(s.dataset.duration || '7000', 10));
+  const totalMs = durations.reduce((a, b) => a + b, 0);
+
+  const navWrap = document.getElementById('scenesNav');
+  scenes.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.dataset.index = i;
+    navWrap.appendChild(dot);
+  });
+  const navDots = Array.from(navWrap.children);
+
+  let currentIndex = 0;
+  let elapsedInScene = 0;
+  let playing = true;
+  let lastTick = performance.now();
+
+  function showScene(i) {
+    scenes.forEach((s, idx) => s.classList.toggle('active', idx === i));
+    // Restart every CSS animation inside the scene so its staggered
+    // reveal replays each time the scene becomes active.
+    const target = scenes[i];
+    target.classList.add('anim-reset');
+    void target.offsetWidth; // reflow with animations disabled
+    target.classList.remove('anim-reset');
+
+    navDots.forEach((d, idx) => {
+      d.classList.toggle('active', idx === i);
+      d.classList.toggle('played', idx < i);
+    });
+    currentIndex = i;
+    elapsedInScene = 0;
+  }
+
+  function fmt(ms) {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const sec = (s % 60).toString().padStart(2, '0');
+    return `${m}:${sec}`;
+  }
+
+  function updateUI() {
+    const elapsedTotal =
+      durations.slice(0, currentIndex).reduce((a, b) => a + b, 0) + elapsedInScene;
+    const pct = Math.min(100, (elapsedTotal / totalMs) * 100);
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('time').textContent = `${fmt(elapsedTotal)} / ${fmt(totalMs)}`;
+  }
+
+  function tick(now) {
+    if (playing) {
+      const dt = now - lastTick;
+      elapsedInScene += dt;
+      if (elapsedInScene >= durations[currentIndex]) {
+        if (currentIndex + 1 < scenes.length) {
+          showScene(currentIndex + 1);
+        } else {
+          // End — pause on final scene.
+          playing = false;
+          document.getElementById('playBtn').textContent = '▶';
+        }
+      }
+      updateUI();
+    }
+    lastTick = now;
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  // Controls
+  document.getElementById('playBtn').onclick = () => {
+    playing = !playing;
+    document.getElementById('playBtn').textContent = playing ? '⏸' : '▶';
+  };
+  document.getElementById('prevBtn').onclick = () => {
+    showScene(Math.max(0, currentIndex - 1));
+    playing = true;
+    document.getElementById('playBtn').textContent = '⏸';
+  };
+  document.getElementById('nextBtn').onclick = () => {
+    if (currentIndex + 1 < scenes.length) showScene(currentIndex + 1);
+    playing = true;
+    document.getElementById('playBtn').textContent = '⏸';
+  };
+  document.getElementById('restartBtn').onclick = () => {
+    showScene(0);
+    playing = true;
+    document.getElementById('playBtn').textContent = '⏸';
+  };
+  navDots.forEach((d) =>
+    d.addEventListener('click', () => {
+      showScene(parseInt(d.dataset.index, 10));
+      playing = true;
+      document.getElementById('playBtn').textContent = '⏸';
+    })
+  );
+  document.addEventListener('keydown', (e) => {
+    if (e.key === ' ') { e.preventDefault(); document.getElementById('playBtn').click(); }
+    if (e.key === 'ArrowRight') document.getElementById('nextBtn').click();
+    if (e.key === 'ArrowLeft') document.getElementById('prevBtn').click();
+    if (e.key === 'r') document.getElementById('restartBtn').click();
+  });
+
+  // ---------------------------------------------------------------------------
+  // NARRATION SCRIPT — read aloud while recording to make a voice-over MP4.
+  // Times are cumulative; each line is the spoken text for that scene.
+  // ---------------------------------------------------------------------------
+  /*
+  Scene 1 — Problem  (~7s)
+    "Every clinical-negligence and personal-injury claim starts the same way —
+     thousands of pages of medical records."
+
+  Scene 2 — Cost  (~8s)
+    "A paralegal spends thirty to fifty hours building a single medical
+     chronology. That's £2,400 of unrecoverable cost on every complex case,
+     and one missed date can lose the matter."
+
+  Scene 3 — Meet MedChron AI  (~8s)
+    "MedChron AI changes that. Built for UK clinical-negligence solicitors:
+     source-anchored chronologies, court-ready bundles, and chat — all with
+     UK data residency and an SRA-defensible verification workflow."
+
+  Scene 4 — 01 Upload  (~8s)
+    "Start by dropping in the whole file — GP notes, hospital records, A and E
+     sheets, consultant letters. Any format, any size. Each document is
+     tracked separately as it processes."
+
+  Scene 5 — 02 Text extraction / OCR  (~8s)
+    "Around seventy percent of NHS records are scanned images or faxes. Our
+     OCR reads them — including mixed handwriting — and keeps the text against
+     its real page number, so every fact stays traceable."
+
+  Scene 6 — 03 Chronology  (~11s)
+    "The AI then extracts every clinical event with a real page number and a
+     verbatim quote. Causation-critical entries are flagged automatically.
+     Treatment gaps surface immediately."
+
+  Scene 7 — 04 Verify  (~8s)
+    "Nothing ships unverified. Every entry has a verify checkbox and is fully
+     editable. Bundles stay watermarked until a fee earner signs each entry
+     off — and every edit is logged."
+
+  Scene 8 — 05 Summary  (~9s)
+    "One generated narrative gives counsel the whole case in a single read —
+     key events, causation-critical points, treatment gaps and pre-existing
+     conditions, each statement linked back to its chronology entry."
+
+  Scene 9 — 06 Bundle  (~8s)
+    "When you're done, one click produces a barrister-ready PDF — cover sheet,
+     table of contents, full chronology, document index. Watermarked AI-
+     Generated — Review Required until your fee earner signs it off."
+
+  Scene 10 — 07 Ask anything  (~11s)
+    "Ask anything. The chat retrieves the most relevant entries from the full
+     record and cites every claim back to a specific entry id — so you never
+     make a call to counsel without knowing exactly which page backs you up."
+
+  Scene 11 — Compliance  (~8s)
+    "Built for UK firms from day one. Azure UK South for AI and OCR.
+     Article 9 health-data DPA. Audit log on every action. No training on
+     your data."
+
+  Scene 12 — CTA  (~8s)
+    "Cut chronology time by eighty percent. Reclaim thirty paralegal hours
+     per case. Book a fifteen-minute demo at medchron dot ai."
+  */
+</script>
+
+</body>
+</html>

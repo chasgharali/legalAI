@@ -32,6 +32,7 @@ interface WorkerState {
   booted: boolean;
   draining: boolean;
   lastInboxPoll: number;
+  lastDbErrorAt: number;
   timer?: NodeJS.Timeout;
 }
 
@@ -46,9 +47,21 @@ function state(): WorkerState {
       booted: false,
       draining: false,
       lastInboxPoll: 0,
+      lastDbErrorAt: 0,
     };
   }
   return globalThis.__emailWorkerState;
+}
+
+function isTransientPrismaConnectionError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes('server selection timeout') ||
+    msg.includes('replicasetnoprimary') ||
+    msg.includes('no available servers') ||
+    msg.includes('timed out')
+  );
 }
 
 export function bootEmailWorker(): void {
@@ -67,7 +80,17 @@ export function bootEmailWorker(): void {
         await pollAllInboxes();
       }
     } catch (err) {
-      console.error('[email-worker] tick failed', err);
+      // Atlas/network outages are noisy in dev; log a concise heartbeat instead
+      // of a full stack frame on every worker interval.
+      if (isTransientPrismaConnectionError(err)) {
+        const now = Date.now();
+        if (now - s.lastDbErrorAt > 60_000) {
+          console.warn('[email-worker] DB temporarily unavailable; worker will retry automatically');
+          s.lastDbErrorAt = now;
+        }
+      } else {
+        console.error('[email-worker] tick failed', err);
+      }
     } finally {
       s.draining = false;
     }

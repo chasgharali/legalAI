@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { getOpenAI } from './openai';
 
 /**
  * Per-page extracted text. Pages are 1-indexed to match what users and
@@ -104,10 +105,19 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<PDFExtractResu
     };
   }
 
-  if (!hasTextractCredentials()) {
+  let ocrPages: PageText[] = [];
+  if (hasTextractCredentials()) {
+    ocrPages = await ocrPagesWithTextract(buffer, scannedPageNumbers);
+  } else if (hasOpenAIKey()) {
     console.warn(
-      `[pdf-extract] ${scannedPageNumbers.length}/${pageCount} pages appear to be ` +
-        'scanned but AWS Textract is not configured. Returning digital text only.'
+      `[pdf-extract] ${scannedPageNumbers.length}/${pageCount} pages appear scanned; ` +
+        'AWS Textract is not configured. Falling back to OpenAI OCR.'
+    );
+    ocrPages = await ocrPagesWithOpenAI(buffer, scannedPageNumbers);
+  } else {
+    console.warn(
+      `[pdf-extract] ${scannedPageNumbers.length}/${pageCount} pages appear to be scanned, ` +
+        'but neither AWS Textract nor OpenAI API key is configured. Returning digital text only.'
     );
     return {
       text: digitalPages.map((p) => p.text).join('\n\f\n'),
@@ -117,7 +127,6 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<PDFExtractResu
     };
   }
 
-  const ocrPages = await ocrPagesWithTextract(buffer, scannedPageNumbers);
   const ocrByPage = new Map(ocrPages.map((p) => [p.page, p.text]));
 
   const merged: PageText[] = digitalPages.map((p) =>
@@ -151,6 +160,11 @@ function hasTextractCredentials(): boolean {
   const id = process.env.AWS_ACCESS_KEY_ID ?? '';
   const secret = process.env.AWS_SECRET_ACCESS_KEY ?? '';
   return id.length > 10 && id !== '...' && secret.length > 10 && secret !== '...';
+}
+
+function hasOpenAIKey(): boolean {
+  const key = process.env.OPENAI_API_KEY ?? '';
+  return key.length > 20 && key.startsWith('sk-');
 }
 
 /**
@@ -195,6 +209,56 @@ async function ocrPagesWithTextract(
   return out;
 }
 
+async function ocrPagesWithOpenAI(
+  buffer: Buffer,
+  pageNumbers: number[]
+): Promise<PageText[]> {
+  const openai = getOpenAI();
+  const pageImages = await renderPdfPagesToPng(buffer, pageNumbers);
+  const out: PageText[] = [];
+
+  for (const { page, png } of pageImages) {
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        max_tokens: 3500,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an OCR engine. Extract every visible word from the provided medical document page. ' +
+              'Return plain text only. Preserve line breaks where possible. Do not summarize.',
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text:
+                  'Perform OCR on this single PDF page image and return the transcribed text exactly as seen.',
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${Buffer.from(png).toString('base64')}`,
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const text = completion.choices[0]?.message?.content ?? '';
+      out.push({ page, text: cleanExtractedText(text) });
+    } catch (err) {
+      console.error(`[pdf-extract] OpenAI OCR failed for page ${page}:`, err);
+      out.push({ page, text: '' });
+    }
+  }
+
+  return out;
+}
+
 /**
  * Render specific PDF pages to PNG using pdfjs-dist + node-canvas.
  * Lazy-imported so a dev environment without `canvas`'s native binding can
@@ -210,9 +274,57 @@ async function renderPdfPagesToPng(
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { createCanvas } = require('canvas') as typeof import('canvas');
 
+  // In Node.js pdfjs-dist always uses a "fake worker" (same-thread).  Before
+  // spawning it, _setupFakeWorkerGlobal checks globalThis.pdfjsWorker for a
+  // cached WorkerMessageHandler.  pdf-parse ships its own pdfjs-dist at a
+  // different major version and leaves its WorkerMessageHandler there; our v4
+  // API then receives a v5 handler → "API version X does not match Worker
+  // version Y".  Clearing the global forces pdfjs v4 to load its own worker
+  // (./pdf.worker.mjs, resolved relative to pdf.mjs → always the v4 copy).
+  // The result is cached by pdfjs via shadow(), so this is safe for concurrent
+  // callers after the first successful render.
+  (globalThis as unknown as { pdfjsWorker?: unknown }).pdfjsWorker = undefined;
+
+  // Force pdf.js internals (temporary canvases, inline image buffers, etc.) to
+  // use the same `canvas` package instance as our output canvas. Mixing
+  // @napi-rs/canvas and node-canvas objects can trigger runtime drawImage type
+  // checks ("Image or Canvas expected") for scanned image-heavy PDFs.
+  class NodeCanvasFactory {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    constructor(_options?: unknown) {}
+
+    create(width: number, height: number) {
+      if (width <= 0 || height <= 0) {
+        throw new Error(`Invalid canvas size: ${width}x${height}`);
+      }
+      const canvas = createCanvas(width, height);
+      const context = canvas.getContext('2d');
+      return { canvas, context };
+    }
+
+    reset(
+      canvasAndContext: { canvas: { width: number; height: number } },
+      width: number,
+      height: number
+    ) {
+      if (width <= 0 || height <= 0) {
+        throw new Error(`Invalid canvas size: ${width}x${height}`);
+      }
+      canvasAndContext.canvas.width = width;
+      canvasAndContext.canvas.height = height;
+    }
+
+    destroy(canvasAndContext: { canvas: { width: number; height: number }; context?: unknown }) {
+      canvasAndContext.canvas.width = 0;
+      canvasAndContext.canvas.height = 0;
+      (canvasAndContext as { context?: unknown }).context = undefined;
+    }
+  }
+
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(buffer),
     useSystemFonts: true,
+    CanvasFactory: NodeCanvasFactory,
   });
   const doc = await loadingTask.promise;
 

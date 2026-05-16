@@ -55,6 +55,13 @@ export async function POST(req: NextRequest) {
       verbatimExtract: true,
       notes: true,
       embedding: true,
+      document: {
+        select: {
+          id: true,
+          fileName: true,
+          fileUrl: true,
+        },
+      },
     },
   });
 
@@ -95,7 +102,7 @@ CHRONOLOGY ENTRIES (cite by [entry-id] when answering):
 ${selected
   .map(
     (e) =>
-      `[${e.id}] [${e.date}] ${e.eventType.toUpperCase()} — ${e.providerName} (${e.specialty}) — Source: ${e.sourceDocumentTag} p.${e.sourcePageNumber ?? '?'}\n  Complaint: ${e.presentingComplaint}${e.diagnosis ? '\n  Dx: ' + e.diagnosis : ''}${e.treatmentGiven ? '\n  Tx: ' + e.treatmentGiven : ''}${e.notes ? '\n  Notes: ' + e.notes : ''}${e.verbatimExtract ? '\n  Quote: "' + e.verbatimExtract.slice(0, 240) + '"' : ''}`
+      `[${e.id}] [${e.date}] ${e.eventType.toUpperCase()} — ${e.providerName} (${e.specialty}) — Source: ${e.document.fileName} (tag: ${e.sourceDocumentTag}) p.${e.sourcePageNumber ?? '?'}\n  Complaint: ${e.presentingComplaint}${e.diagnosis ? '\n  Dx: ' + e.diagnosis : ''}${e.treatmentGiven ? '\n  Tx: ' + e.treatmentGiven : ''}${e.notes ? '\n  Notes: ' + e.notes : ''}${e.verbatimExtract ? '\n  Quote: "' + e.verbatimExtract.slice(0, 240) + '"' : ''}`
   )
   .join('\n\n')}
   `.trim();
@@ -118,6 +125,9 @@ ${selected
         date: e.date,
         sourceDocumentTag: e.sourceDocumentTag,
         sourcePageNumber: e.sourcePageNumber,
+        documentId: e.document.id,
+        documentName: e.document.fileName,
+        documentUrl: e.document.fileUrl,
       }));
       controller.enqueue(
         encoder.encode(`data: ${JSON.stringify({ citations })}\n\n`)
